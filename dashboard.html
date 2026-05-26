@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>JobTracker Dashboard</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 14px;
+  color: #1e293b;
+  background: #f1f5f9;
+  min-height: 100vh;
+}
+
+/* Layout */
+.app { display: flex; flex-direction: column; min-height: 100vh; }
+
+.topbar {
+  background: #2563eb;
+  color: #fff;
+  padding: 0 28px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  height: 56px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.topbar-brand { font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+.topbar-brand span { font-size: 22px; }
+.topbar-search {
+  flex: 1;
+  max-width: 360px;
+  position: relative;
+}
+.topbar-search input {
+  width: 100%;
+  padding: 7px 12px 7px 34px;
+  border: none;
+  border-radius: 8px;
+  background: rgba(255,255,255,.18);
+  color: #fff;
+  font-size: 13px;
+  outline: none;
+}
+.topbar-search input::placeholder { color: rgba(255,255,255,.65); }
+.topbar-search::before {
+  content: '🔍';
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 14px;
+}
+.topbar-actions { margin-left: auto; display: flex; gap: 8px; }
+.tb-btn {
+  background: rgba(255,255,255,.18);
+  color: #fff;
+  border: none;
+  border-radius: 7px;
+  padding: 7px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .15s;
+}
+.tb-btn:hover { background: rgba(255,255,255,.3); }
+.tb-btn.accent { background: #fff; color: #2563eb; }
+.tb-btn.accent:hover { background: #eff6ff; }
+
+/* Stats bar */
+.stats-row {
+  display: flex;
+  gap: 16px;
+  padding: 20px 28px 0;
+  flex-wrap: wrap;
+}
+.stat-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 16px 20px;
+  min-width: 110px;
+  flex: 1;
+  border: 1px solid #e2e8f0;
+  cursor: pointer;
+  transition: box-shadow .15s, border-color .15s;
+}
+.stat-card:hover { border-color: #93c5fd; box-shadow: 0 2px 8px rgba(37,99,235,.08); }
+.stat-card.active { border-color: #2563eb; background: #eff6ff; }
+.stat-num { font-size: 28px; font-weight: 700; line-height: 1; }
+.stat-label { font-size: 12px; color: #64748b; margin-top: 4px; }
+.c-blue { color: #2563eb; } .c-green { color: #16a34a; }
+.c-yellow { color: #d97706; } .c-red { color: #dc2626; }
+.c-gray { color: #64748b; }
+
+/* Filter tabs */
+.filter-row {
+  display: flex;
+  gap: 6px;
+  padding: 16px 28px 0;
+  flex-wrap: wrap;
+}
+.filter-tab {
+  padding: 6px 14px;
+  border-radius: 20px;
+  border: 1.5px solid #e2e8f0;
+  background: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  color: #64748b;
+  transition: all .15s;
+}
+.filter-tab:hover { border-color: #93c5fd; color: #2563eb; }
+.filter-tab.active { background: #2563eb; color: #fff; border-color: #2563eb; }
+
+/* Job grid */
+.jobs-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 16px;
+  padding: 20px 28px 40px;
+}
+
+.job-card {
+  background: #fff;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  overflow: hidden;
+  transition: box-shadow .15s, border-color .15s;
+  cursor: pointer;
+}
+.job-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,.08); border-color: #cbd5e1; }
+
+.card-header {
+  padding: 16px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.card-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: #dbeafe;
+  color: #2563eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+.card-main { flex: 1; min-width: 0; }
+.card-title {
+  font-weight: 700;
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.card-company { font-size: 12px; color: #64748b; margin-top: 2px; }
+.card-badge { flex-shrink: 0; }
+
+.badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 20px;
+  text-transform: uppercase;
+  letter-spacing: .3px;
+}
+.badge-applied { background: #dbeafe; color: #1d4ed8; }
+.badge-interview { background: #dcfce7; color: #15803d; }
+.badge-rejected { background: #fee2e2; color: #b91c1c; }
+.badge-offer { background: #fef3c7; color: #b45309; }
+.badge-ghosted { background: #f1f5f9; color: #475569; }
+.badge-archived { background: #f1f5f9; color: #94a3b8; }
+
+.card-body { padding: 0 16px 14px; }
+.card-meta {
+  display: flex;
+  gap: 12px;
+  font-size: 11px;
+  color: #94a3b8;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+.meta-item { display: flex; align-items: center; gap: 4px; }
+
+.card-notes {
+  font-size: 12px;
+  color: #64748b;
+  background: #f8fafc;
+  border-radius: 6px;
+  padding: 8px 10px;
+  margin-bottom: 10px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.card-actions {
+  display: flex;
+  gap: 6px;
+  padding: 10px 16px;
+  border-top: 1px solid #f1f5f9;
+  background: #f8fafc;
+}
+.card-btn {
+  flex: 1;
+  padding: 6px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #475569;
+  cursor: pointer;
+  transition: all .12s;
+  text-align: center;
+}
+.card-btn:hover { border-color: #93c5fd; color: #2563eb; background: #eff6ff; }
+.card-btn.danger:hover { border-color: #fca5a5; color: #dc2626; background: #fff1f2; }
+
+/* Timeline */
+.timeline { padding: 0 16px 12px; }
+.timeline-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #94a3b8;
+  margin-bottom: 8px;
+  letter-spacing: .4px;
+}
+.timeline-item {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin-bottom: 6px;
+  font-size: 11px;
+}
+.tl-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-top: 3px;
+  flex-shrink: 0;
+  background: #cbd5e1;
+}
+.tl-dot.applied { background: #2563eb; }
+.tl-dot.interview { background: #16a34a; }
+.tl-dot.rejected { background: #dc2626; }
+.tl-dot.offer { background: #d97706; }
+.tl-dot.ghosted { background: #94a3b8; }
+.tl-date { color: #94a3b8; min-width: 60px; }
+.tl-note { color: #475569; }
+
+/* Followup banner */
+.followup-section {
+  background: #fffbeb;
+  border: 1.5px solid #fde68a;
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin: 0 28px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.followup-section .icon { font-size: 22px; }
+.followup-section .text { flex: 1; }
+.followup-section .text strong { display: block; font-size: 13px; color: #92400e; }
+.followup-section .text small { font-size: 12px; color: #b45309; }
+.followup-jobs { margin-top: 10px; }
+.followup-job-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: #fff;
+  border: 1px solid #fde68a;
+  border-radius: 8px;
+  margin-bottom: 6px;
+}
+.followup-job-item .info strong { font-size: 13px; }
+.followup-job-item .info small { font-size: 11px; color: #64748b; display: block; }
+.followup-btn {
+  background: #d97706;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.followup-btn:hover { background: #b45309; }
+
+/* Modal */
+.overlay {
+  position: fixed; inset: 0;
+  background: rgba(15,23,42,.4);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.modal {
+  background: #fff;
+  border-radius: 14px;
+  width: 100%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0,0,0,.2);
+}
+.modal-header {
+  padding: 20px 24px 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.modal-title { font-size: 18px; font-weight: 700; }
+.modal-close {
+  width: 30px; height: 30px;
+  border: none;
+  background: #f1f5f9;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+}
+.modal-close:hover { background: #e2e8f0; }
+.modal-body { padding: 20px 24px 24px; }
+
+.form-group { margin-bottom: 16px; }
+.form-group label {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  color: #374151;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: .4px;
+}
+.form-group input,
+.form-group select,
+.form-group textarea {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #1e293b;
+  outline: none;
+  transition: border-color .15s;
+  font-family: inherit;
+}
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus { border-color: #2563eb; }
+.form-group textarea { resize: vertical; min-height: 80px; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+.modal-footer { display: flex; gap: 10px; justify-content: flex-end; }
+.btn {
+  padding: 9px 20px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all .15s;
+}
+.btn-ghost { background: #f1f5f9; color: #475569; }
+.btn-ghost:hover { background: #e2e8f0; }
+.btn-primary { background: #2563eb; color: #fff; }
+.btn-primary:hover { background: #1d4ed8; }
+.btn-danger { background: #fee2e2; color: #dc2626; }
+.btn-danger:hover { background: #fca5a5; }
+
+.empty-state {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 60px 20px;
+  color: #94a3b8;
+}
+.empty-state .es-icon { font-size: 48px; margin-bottom: 12px; }
+.empty-state .es-text { font-size: 16px; font-weight: 600; color: #64748b; }
+.empty-state .es-sub { font-size: 13px; margin-top: 6px; }
+
+.draft-area {
+  width: 100%;
+  padding: 10px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 13px;
+  font-family: inherit;
+  resize: vertical;
+  min-height: 120px;
+  margin-top: 10px;
+  color: #1e293b;
+}
+.draft-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #374151;
+  text-transform: uppercase;
+  letter-spacing: .4px;
+  margin-top: 14px;
+  display: block;
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="topbar">
+    <div class="topbar-brand"><span>💼</span> JobTracker</div>
+    <div class="topbar-search">
+      <input type="text" id="searchInput" placeholder="Search jobs, companies…">
+    </div>
+    <div class="topbar-actions">
+      <button class="tb-btn" id="settingsNavBtn">⚙ Settings</button>
+      <button class="tb-btn accent" id="addJobBtn">+ Add Job</button>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-row" id="statsRow">
+    <div class="stat-card active" data-filter="all">
+      <div class="stat-num c-blue" id="sAll">0</div>
+      <div class="stat-label">All Jobs</div>
+    </div>
+    <div class="stat-card" data-filter="applied">
+      <div class="stat-num c-blue" id="sApplied">0</div>
+      <div class="stat-label">Applied</div>
+    </div>
+    <div class="stat-card" data-filter="interview">
+      <div class="stat-num c-green" id="sInterview">0</div>
+      <div class="stat-label">Interview</div>
+    </div>
+    <div class="stat-card" data-filter="offer">
+      <div class="stat-num c-yellow" id="sOffer">0</div>
+      <div class="stat-label">Offer</div>
+    </div>
+    <div class="stat-card" data-filter="rejected">
+      <div class="stat-num c-red" id="sRejected">0</div>
+      <div class="stat-label">Rejected</div>
+    </div>
+    <div class="stat-card" data-filter="ghosted">
+      <div class="stat-num c-gray" id="sGhosted">0</div>
+      <div class="stat-label">Ghosted</div>
+    </div>
+  </div>
+
+  <!-- Follow-up section (only shown when there are overdue) -->
+  <div id="followupSection" style="display:none; margin-top:20px;">
+    <div class="followup-section">
+      <div class="icon">⏰</div>
+      <div class="text">
+        <strong>Follow-up Reminders</strong>
+        <small>These email applications haven't heard back yet</small>
+      </div>
+    </div>
+    <div class="followup-jobs" id="followupJobs" style="padding:0 28px;margin-top:8px;"></div>
+  </div>
+
+  <!-- Filter chips -->
+  <div class="filter-row">
+    <div class="filter-tab active" data-filter="all">All</div>
+    <div class="filter-tab" data-filter="applied">Applied</div>
+    <div class="filter-tab" data-filter="interview">Interview</div>
+    <div class="filter-tab" data-filter="offer">Offer</div>
+    <div class="filter-tab" data-filter="rejected">Rejected</div>
+    <div class="filter-tab" data-filter="ghosted">Ghosted</div>
+    <div class="filter-tab" data-filter="email">📧 Email Apps</div>
+  </div>
+
+  <!-- Jobs -->
+  <div class="jobs-grid" id="jobsGrid"></div>
+</div>
+
+<!-- Add/Edit Modal -->
+<div class="overlay" id="addModal" style="display:none">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modalTitle">Add Job</div>
+      <button class="modal-close" id="closeModalBtn">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="editId">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Job Title *</label>
+          <input id="fTitle" placeholder="Software Engineer">
+        </div>
+        <div class="form-group">
+          <label>Company *</label>
+          <input id="fCompany" placeholder="Google">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Status</label>
+          <select id="fStatus">
+            <option value="applied">Applied</option>
+            <option value="interview">Interview</option>
+            <option value="offer">Offer</option>
+            <option value="rejected">Rejected</option>
+            <option value="ghosted">Ghosted</option>
+            <option value="archived">Archived</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>How Applied</label>
+          <select id="fMethod">
+            <option value="online">Online Form</option>
+            <option value="email">Email</option>
+            <option value="linkedin">LinkedIn</option>
+            <option value="referral">Referral</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Job URL</label>
+        <input id="fUrl" type="url" placeholder="https://...">
+      </div>
+      <div class="form-group">
+        <label>Applied Date</label>
+        <input id="fDate" type="date">
+      </div>
+      <div class="form-group">
+        <label>Contact Email (for email applications)</label>
+        <input id="fEmail" type="email" placeholder="recruiter@company.com">
+      </div>
+      <div class="form-group">
+        <label>Notes</label>
+        <textarea id="fNotes" placeholder="Anything worth remembering about this role…"></textarea>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" id="cancelModalBtn">Cancel</button>
+        <button class="btn btn-primary" id="saveJobBtn">Save Job</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Follow-up Modal -->
+<div class="overlay" id="followupModal" style="display:none">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Draft Follow-up Email</div>
+      <button class="modal-close" id="closeFollowupBtn">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:#64748b;margin-bottom:14px">Here's a draft follow-up for <strong id="followupJobName"></strong>. Edit it before sending.</p>
+      <label class="draft-label">To</label>
+      <input id="followupTo" style="width:100%;padding:8px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:13px;margin-top:6px" placeholder="recruiter@company.com">
+      <label class="draft-label">Draft Email</label>
+      <textarea class="draft-area" id="followupDraft"></textarea>
+      <div style="margin-top:14px;display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap">
+        <button class="btn btn-ghost" id="cancelFollowupBtn">Cancel</button>
+        <button class="btn btn-primary" id="copyDraftBtn">📋 Copy to Clipboard</button>
+        <button class="btn btn-primary" id="openMailtoBtn">📧 Open in Email App</button>
+        <button class="btn btn-ghost" id="markSentBtn">✓ Mark as Sent</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="dashboard.js"></script>
+</body>
+</html>

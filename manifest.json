@@ -1,0 +1,41 @@
+{
+  "manifest_version": 3,
+  "name": "JobTracker",
+  "version": "1.0.0",
+  "description": "Track job applications automatically, get AI help answering questions, sync rejections and interviews from Gmail.",
+  "permissions": [
+    "storage",
+    "notifications",
+    "alarms",
+    "activeTab",
+    "tabs",
+    "identity"
+  ],
+  "host_permissions": [
+    "https://api.anthropic.com/*",
+    "https://gmail.googleapis.com/*",
+    "https://www.googleapis.com/*",
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "JobTracker"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "options_page": "settings.html",
+  "web_accessible_resources": [
+    {
+      "resources": ["dashboard.html", "settings.html"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}

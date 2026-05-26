@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>JobTracker Settings</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 14px;
+  color: #1e293b;
+  background: #f1f5f9;
+  min-height: 100vh;
+}
+
+.topbar {
+  background: #2563eb;
+  color: #fff;
+  padding: 0 28px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 56px;
+}
+.topbar-brand { font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+.topbar-brand span { font-size: 22px; }
+.back-btn {
+  background: rgba(255,255,255,.18);
+  color: #fff;
+  border: none;
+  border-radius: 7px;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-left: auto;
+}
+.back-btn:hover { background: rgba(255,255,255,.3); }
+
+.page { max-width: 680px; margin: 0 auto; padding: 32px 20px; }
+
+.section {
+  background: #fff;
+  border-radius: 14px;
+  border: 1px solid #e2e8f0;
+  margin-bottom: 24px;
+  overflow: hidden;
+}
+.section-header {
+  padding: 18px 24px 14px;
+  border-bottom: 1px solid #f1f5f9;
+}
+.section-title { font-size: 16px; font-weight: 700; }
+.section-sub { font-size: 13px; color: #64748b; margin-top: 4px; }
+.section-body { padding: 20px 24px; }
+
+.form-group { margin-bottom: 20px; }
+.form-group:last-child { margin-bottom: 0; }
+.form-group label {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  color: #374151;
+  margin-bottom: 7px;
+  text-transform: uppercase;
+  letter-spacing: .4px;
+}
+.form-group input,
+.form-group select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #1e293b;
+  outline: none;
+  transition: border-color .15s;
+  font-family: inherit;
+}
+.form-group input:focus,
+.form-group select:focus { border-color: #2563eb; }
+.form-group .hint {
+  font-size: 11px;
+  color: #94a3b8;
+  margin-top: 5px;
+  line-height: 1.5;
+}
+.form-group .hint a { color: #2563eb; }
+
+.toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-bottom: 1px solid #f1f5f9;
+}
+.toggle-row:last-child { border-bottom: none; }
+.toggle-info strong { display: block; font-size: 14px; }
+.toggle-info small { font-size: 12px; color: #64748b; }
+.toggle {
+  width: 44px;
+  height: 24px;
+  border-radius: 12px;
+  background: #e2e8f0;
+  position: relative;
+  cursor: pointer;
+  border: none;
+  transition: background .2s;
+  flex-shrink: 0;
+}
+.toggle.on { background: #2563eb; }
+.toggle::after {
+  content: '';
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  top: 3px;
+  left: 3px;
+  transition: left .2s;
+  box-shadow: 0 1px 3px rgba(0,0,0,.2);
+}
+.toggle.on::after { left: 23px; }
+
+.btn {
+  padding: 10px 22px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all .15s;
+}
+.btn-primary { background: #2563eb; color: #fff; }
+.btn-primary:hover { background: #1d4ed8; }
+.btn-ghost { background: #f1f5f9; color: #475569; }
+.btn-ghost:hover { background: #e2e8f0; }
+.btn-danger { background: #fee2e2; color: #dc2626; }
+.btn-danger:hover { background: #fca5a5; }
+.btn-success { background: #dcfce7; color: #15803d; }
+.btn-success:hover { background: #bbf7d0; }
+
+.status-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+}
+.status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #e2e8f0;
+}
+.status-dot.ok { background: #22c55e; }
+.status-dot.error { background: #ef4444; }
+.status-text { font-size: 12px; color: #64748b; }
+
+.steps {
+  background: #f8fafc;
+  border-radius: 8px;
+  padding: 14px 16px;
+  margin-top: 12px;
+  font-size: 12px;
+  line-height: 1.7;
+  color: #475569;
+  border: 1px solid #e2e8f0;
+}
+.steps strong { color: #1e293b; display: block; margin-bottom: 6px; }
+.steps ol { padding-left: 16px; }
+.steps a { color: #2563eb; }
+.steps code {
+  background: #e2e8f0;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-family: monospace;
+}
+
+.save-bar {
+  position: fixed;
+  bottom: 24px;
+  right: 28px;
+  display: flex;
+  gap: 10px;
+}
+
+.toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1e293b;
+  color: #fff;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  z-index: 999;
+  animation: fadeup .2s ease;
+}
+@keyframes fadeup { from { opacity: 0; transform: translateX(-50%) translateY(8px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-brand"><span>💼</span> JobTracker — Settings</div>
+  <button class="back-btn" id="backBtn">← Back</button>
+</div>
+
+<div class="page">
+
+  <!-- Claude API -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-title">✨ Claude AI — Answer Questions</div>
+      <div class="section-sub">Used to generate answers for application questions and classify Gmail replies</div>
+    </div>
+    <div class="section-body">
+      <div class="form-group">
+        <label>Claude API Key</label>
+        <input type="password" id="claudeKey" placeholder="sk-ant-api03-…">
+        <div class="hint">Get your key at <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a>. Stored locally in your browser only, never sent anywhere except Anthropic's API.</div>
+      </div>
+      <div class="status-row">
+        <div class="status-dot" id="claudeDot"></div>
+        <div class="status-text" id="claudeStatus">Not configured</div>
+        <button class="btn btn-ghost" id="testClaude" style="margin-left:auto;padding:6px 14px;font-size:12px">Test Key</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Gmail -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-title">📧 Gmail — Auto-sync Replies</div>
+      <div class="section-sub">Detects rejections and interview invites automatically from your inbox</div>
+    </div>
+    <div class="section-body">
+      <div class="toggle-row">
+        <div class="toggle-info">
+          <strong>Enable Gmail sync</strong>
+          <small>Checks your inbox every 15 minutes for company replies</small>
+        </div>
+        <button class="toggle" id="gmailToggle"></button>
+      </div>
+
+      <div id="gmailSetup" style="margin-top:18px">
+        <div class="form-group">
+          <label>Google OAuth2 Client ID</label>
+          <input id="googleClientId" placeholder="123456789-abc…apps.googleusercontent.com">
+          <div class="hint">
+            You need a free Google Cloud project with Gmail API enabled.
+            <a href="#" id="showGmailSteps">Show setup steps →</a>
+          </div>
+        </div>
+
+        <div class="steps" id="gmailSteps" style="display:none">
+          <strong>One-time Gmail setup (takes ~5 minutes):</strong>
+          <ol>
+            <li>Go to <a href="https://console.cloud.google.com" target="_blank">console.cloud.google.com</a></li>
+            <li>Create a new project (e.g. "JobTracker")</li>
+            <li>Go to <strong>APIs & Services → Enable APIs</strong> → enable <strong>Gmail API</strong></li>
+            <li>Go to <strong>APIs & Services → Credentials → Create Credentials → OAuth 2.0 Client ID</strong></li>
+            <li>Application type: <strong>Web application</strong></li>
+            <li>Add this exact redirect URI: <code id="redirectUri">Loading…</code></li>
+            <li>Copy the Client ID and paste it above</li>
+            <li>Click "Connect Gmail" below</li>
+          </ol>
+        </div>
+
+        <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+          <button class="btn btn-primary" id="connectGmailBtn">Connect Gmail Account</button>
+          <button class="btn btn-ghost" id="syncNowBtn" style="display:none">🔄 Sync Now</button>
+        </div>
+
+        <div class="status-row" style="margin-top:10px">
+          <div class="status-dot" id="gmailDot"></div>
+          <div class="status-text" id="gmailStatus">Not connected</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Follow-up -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-title">⏰ Follow-up Reminders</div>
+      <div class="section-sub">Get reminded to follow up on email applications that haven't heard back</div>
+    </div>
+    <div class="section-body">
+      <div class="form-group">
+        <label>Remind me after (days)</label>
+        <select id="followUpDays">
+          <option value="5">5 days</option>
+          <option value="7" selected>7 days</option>
+          <option value="10">10 days</option>
+          <option value="14">2 weeks</option>
+          <option value="21">3 weeks</option>
+          <option value="0">Disable reminders</option>
+        </select>
+        <div class="hint">For email applications only. You'll get a browser notification when the time is up.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Danger zone -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-title" style="color:#dc2626">Danger Zone</div>
+    </div>
+    <div class="section-body">
+      <button class="btn btn-danger" id="clearDataBtn">🗑 Clear All Job Data</button>
+      <span style="font-size:12px;color:#94a3b8;margin-left:12px">Cannot be undone</span>
+    </div>
+  </div>
+
+</div>
+
+<div class="save-bar">
+  <button class="btn btn-ghost" id="cancelBtn">Cancel</button>
+  <button class="btn btn-primary" id="saveBtn">Save Settings</button>
+</div>
+
+<script src="settings.js"></script>
+</body>
+</html>
