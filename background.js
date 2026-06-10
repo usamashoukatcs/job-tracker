@@ -195,7 +195,8 @@ async function classifyEmail(content, apiKey, title, company) {
       headers: {
         'Content-Type': 'application/json',
         'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01'
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
       },
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
@@ -243,9 +244,14 @@ async function checkFollowUps() {
 
 // ── AI answer ────────────────────────────────────────────────────────────────
 
-async function getAIAnswer(question, context) {
+async function getAIAnswer(question, context, description) {
   const settings = await getSettings();
   if (!settings.claudeApiKey) return 'Please add your Claude API key in the extension settings first.';
+
+  const jobContext = [
+    context ? `Applying for: ${context}` : '',
+    description ? `Job description:\n${description}` : ''
+  ].filter(Boolean).join('\n\n');
 
   try {
     const res = await fetch('https://api.anthropic.com/v1/messages', {
@@ -253,14 +259,15 @@ async function getAIAnswer(question, context) {
       headers: {
         'Content-Type': 'application/json',
         'x-api-key': settings.claudeApiKey,
-        'anthropic-version': '2023-06-01'
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-6',
         max_tokens: 400,
         messages: [{
           role: 'user',
-          content: `Help me answer this job application question. Write a short, genuine answer in simple English. No corporate jargon, no buzzwords, no AI-sounding phrases. Sound like a real person talking. 2-4 sentences max.${context ? `\n\nApplying for: ${context}` : ''}\n\nQuestion: ${question}\n\nWrite the answer directly, nothing else.`
+          content: `Help me answer this job application question. Write a short, genuine answer in simple English. No corporate jargon, no buzzwords, no AI-sounding phrases. Sound like a real person talking. 2-4 sentences max.${jobContext ? `\n\n${jobContext}` : ''}\n\nQuestion: ${question}\n\nWrite the answer directly, nothing else.`
         }]
       })
     });
@@ -308,13 +315,23 @@ chrome.notifications.onButtonClicked.addListener((notifId, btnIdx) => {
 chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
   (async () => {
     switch (msg.type) {
-      case 'JOB_APPLIED':
+      case 'JOB_APPLIED': {
+        if (msg.job.url) {
+          const existing = await getJobs();
+          const norm = u => u.split('#')[0].replace(/\/$/, '').toLowerCase();
+          const dup = existing.find(j => j.url && norm(j.url) === norm(msg.job.url));
+          if (dup) {
+            reply({ ok: false, duplicate: true, appliedDate: dup.appliedDate });
+            break;
+          }
+        }
         const job = await addJob(msg.job);
         notify('Job Tracked!', `${job.title} at ${job.company} added to your tracker.`);
         reply({ ok: true, job });
         break;
+      }
       case 'GET_AI_ANSWER':
-        reply({ answer: await getAIAnswer(msg.question, msg.context) });
+        reply({ answer: await getAIAnswer(msg.question, msg.context, msg.description) });
         break;
       case 'GET_JOBS':
         reply({ jobs: await getJobs() });

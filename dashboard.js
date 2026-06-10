@@ -4,6 +4,19 @@ let currentFilter = 'all';
 let currentSearch = '';
 let followupJobId = null;
 
+const BACKEND = 'http://localhost:8080';
+let finderJobs = [];
+let finderPollInterval = null;
+const trackedFinderUrls = new Set();
+const visitedFinderUrls = new Set(JSON.parse(localStorage.getItem('visitedFinderUrls') || '[]'));
+
+const DEFAULT_KEYWORDS = [
+  'backend engineer',
+  'software engineer',
+  'backend developer',
+  'platform engineer',
+].join('\n');
+
 const STATUS_BADGE = {
   applied: 'badge-applied', interview: 'badge-interview', rejected: 'badge-rejected',
   offer: 'badge-offer', ghosted: 'badge-ghosted', archived: 'badge-archived'
@@ -364,5 +377,278 @@ document.addEventListener('DOMContentLoaded', () => {
   // Auto-open add modal if ?add=1
   if (location.search.includes('add=1')) openAddModal();
 
+  // Main tab switching
+  document.getElementById('tabTracker').addEventListener('click', () => switchTab('tracker'));
+  document.getElementById('tabFinder').addEventListener('click',  () => switchTab('finder'));
+
+  // Finder settings panel
+  document.getElementById('toggleSettingsBtn').addEventListener('click', () => {
+    const panel = document.getElementById('searchSettingsPanel');
+    const open  = panel.style.display === 'none';
+    panel.style.display = open ? '' : 'none';
+    document.getElementById('toggleSettingsBtn').textContent = open ? '⚙ Settings ▲' : '⚙ Settings';
+    if (open) loadSettingsIntoPanel();
+  });
+  document.getElementById('saveSettingsBtn').addEventListener('click', saveSearchSettings);
+
+  // Finder
+  document.getElementById('searchJobsBtn').addEventListener('click', searchJobs);
+  document.getElementById('finderGrid').addEventListener('click', async e => {
+    const viewBtn = e.target.closest('[data-action="view-job"]');
+    if (viewBtn) {
+      const url = viewBtn.dataset.url;
+      if (url) window.open(url, '_blank');
+      visitedFinderUrls.add(url);
+      localStorage.setItem('visitedFinderUrls', JSON.stringify([...visitedFinderUrls]));
+      const card = viewBtn.closest('.job-card');
+      if (card) {
+        card.classList.add('finder-visited');
+        card.classList.remove('finder-new');
+        const badges = card.querySelector('.card-badges');
+        if (badges) {
+          const newBadge = [...badges.querySelectorAll('span')].find(s => s.textContent.includes('New'));
+          if (newBadge) newBadge.remove();
+        }
+        if (badges && !badges.querySelector('.visited-badge') && !badges.querySelector('.tracking-badge')) {
+          const badge = document.createElement('span');
+          badge.className = 'visited-badge';
+          badge.style.cssText = 'font-size:10px;font-weight:700;color:#6366f1;background:#ede9fe;padding:2px 7px;border-radius:10px;white-space:nowrap';
+          badge.textContent = '👁 Visited';
+          badges.appendChild(badge);
+        }
+      }
+    }
+
+    const btn = e.target.closest('[data-finder-track]');
+    if (!btn || btn.disabled) return;
+    const job = finderJobs.find(j => j.id === btn.dataset.finderTrack);
+    if (!job) return;
+    const normUrl = u => (u || '').split('#')[0].replace(/\/$/, '').toLowerCase();
+    const alreadyTracked = allJobs.some(j => j.url && normUrl(j.url) === normUrl(job.url));
+    if (alreadyTracked) {
+      btn.disabled = true;
+      btn.textContent = '✓ Tracked';
+      btn.classList.add('tracked-btn');
+      return;
+    }
+    btn.disabled = true;
+    btn.textContent = '…';
+    await new Promise(resolve =>
+      chrome.runtime.sendMessage({
+        type: 'ADD_JOB',
+        job: {
+          title: job.title,
+          company: job.company,
+          url: job.url,
+          applicationMethod: 'online',
+          status: 'applied',
+          notes: job.matchedSkills?.length ? `Matched: ${job.matchedSkills.join(', ')}` : ''
+        }
+      }, resolve)
+    );
+    trackedFinderUrls.add(job.url);
+    btn.textContent = '✓ Tracked';
+    btn.classList.add('tracked-btn');
+    const card = btn.closest('.job-card');
+    if (card) {
+      card.classList.remove('finder-visited');
+      const visitedBadge = card.querySelector('.visited-badge');
+      if (visitedBadge) visitedBadge.remove();
+      const badges = card.querySelector('.card-badges');
+      if (badges && !badges.querySelector('.tracking-badge')) {
+        const tb = document.createElement('span');
+        tb.className = 'tracking-badge';
+        tb.style.cssText = 'font-size:10px;font-weight:700;color:#16a34a;background:#dcfce7;padding:2px 7px;border-radius:10px;white-space:nowrap';
+        tb.textContent = '✓ Tracking';
+        badges.appendChild(tb);
+      }
+    }
+  });
+
   reload();
 });
+
+// ── Search settings (persisted to localStorage) ──────────────────────────────
+
+function loadSearchSettings() {
+  return {
+    keywords: (localStorage.getItem('finderKeywords') || DEFAULT_KEYWORDS)
+      .split('\n').map(s => s.trim()).filter(Boolean),
+    customUrls: (localStorage.getItem('finderCustomUrls') || '')
+      .split('\n').map(s => s.trim()).filter(Boolean),
+    customWebsites: (localStorage.getItem('finderCustomWebsites') || '')
+      .split('\n').map(s => s.trim()).filter(Boolean),
+  };
+}
+
+function loadSettingsIntoPanel() {
+  document.getElementById('settingsKeywords').value =
+    localStorage.getItem('finderKeywords') || DEFAULT_KEYWORDS;
+  document.getElementById('settingsWebsites').value =
+    localStorage.getItem('finderCustomWebsites') || '';
+  document.getElementById('settingsUrls').value =
+    localStorage.getItem('finderCustomUrls') || '';
+}
+
+function saveSearchSettings() {
+  localStorage.setItem('finderKeywords',        document.getElementById('settingsKeywords').value);
+  localStorage.setItem('finderCustomWebsites',  document.getElementById('settingsWebsites').value);
+  localStorage.setItem('finderCustomUrls',      document.getElementById('settingsUrls').value);
+  document.getElementById('searchSettingsPanel').style.display = 'none';
+  document.getElementById('toggleSettingsBtn').textContent = '⚙ Settings';
+  showToast('Search settings saved');
+}
+
+// ── Finder ───────────────────────────────────────────────────────────────────
+
+function switchTab(tab) {
+  const isTracker = tab === 'tracker';
+  document.getElementById('tabTracker').classList.toggle('active', isTracker);
+  document.getElementById('tabFinder').classList.toggle('active', !isTracker);
+  document.getElementById('trackerPanel').style.display  = isTracker ? '' : 'none';
+  document.getElementById('trackerSearch').style.display = isTracker ? '' : 'none';
+  document.getElementById('finderPanel').style.display   = isTracker ? 'none' : '';
+  if (!isTracker) loadFinderJobs();
+}
+
+async function loadFinderJobs() {
+  const grid = document.getElementById('finderGrid');
+  grid.innerHTML = `<div style="grid-column:1/-1;padding:60px 0;text-align:center;color:#94a3b8">Loading…</div>`;
+  try {
+    const [res, jobsRes] = await Promise.all([
+      fetch(`${BACKEND}/api/jobs`),
+      send('GET_JOBS')
+    ]);
+    if (!res.ok) throw new Error();
+    finderJobs = await res.json();
+    allJobs = jobsRes?.jobs || [];
+    renderFinderJobs();
+  } catch {
+    grid.innerHTML = `
+      <div class="empty-state" style="grid-column:1/-1">
+        <div class="es-icon">🔌</div>
+        <div class="es-text">Server not running</div>
+        <div class="es-sub">Run: <code style="background:#e2e8f0;padding:2px 6px;border-radius:4px">cd job-finder-server && go run .</code></div>
+      </div>`;
+  }
+}
+
+function renderFinderJobs() {
+  const grid = document.getElementById('finderGrid');
+  if (!finderJobs.length) {
+    grid.innerHTML = `
+      <div class="empty-state" style="grid-column:1/-1">
+        <div class="es-icon">🔍</div>
+        <div class="es-text">No jobs yet</div>
+        <div class="es-sub">Click "Search New Jobs" to scrape LinkedIn &amp; Indeed</div>
+      </div>`;
+    return;
+  }
+  const normUrl = u => (u || '').split('#')[0].replace(/\/$/, '').toLowerCase();
+  const appliedUrls = new Set(allJobs.filter(j => j.url).map(j => normUrl(j.url)));
+
+  grid.innerHTML = finderJobs.map(j => {
+    const sc = j.score >= 80 ? 'score-high' : j.score >= 60 ? 'score-mid' : j.score >= 40 ? 'score-low' : 'score-weak';
+    const sl = j.score >= 80 ? 'Strong Match' : j.score >= 60 ? 'Good Match' : j.score >= 40 ? 'Partial Match' : 'Weak Match';
+    const src = j.source === 'linkedin'      ? '🔗 LinkedIn'
+              : j.source === 'google'        ? '🔍 Google Jobs'
+              : j.source === 'arbeitnow'     ? '🇪🇺 Arbeitnow'
+              : j.source === 'remoteok'      ? '🌍 RemoteOK'
+              : j.source === 'hn-hiring'     ? '🟠 HN Hiring'
+              : j.source === 'relocate'      ? '✈️ Relocate.me'
+              : j.source === 'swissdevjobs'  ? '🇨🇭 SwissDevJobs'
+              : j.source?.startsWith('custom:') ? '🌐 ' + j.source.replace('custom:', '')
+              : j.source?.startsWith('indeed-')  ? '📋 Indeed/' + j.source.split('-')[1]?.toUpperCase()
+              : '📋 ' + j.source;
+    const chips = (j.matchedSkills || []).map(s => `<span class="skill-chip">${s}</span>`).join('');
+    const tracked = trackedFinderUrls.has(j.url) || appliedUrls.has(normUrl(j.url));
+    const visited = visitedFinderUrls.has(j.url);
+    const isNew = j.createdAt && (Date.now() - new Date(j.createdAt).getTime()) < 24 * 60 * 60 * 1000;
+    return `
+      <div class="job-card${visited ? ' finder-visited' : ''}${isNew && !visited ? ' finder-new' : ''}">
+        <div class="card-header">
+          <div class="card-avatar">${initials(j.company)}</div>
+          <div class="card-main">
+            <div class="card-title">${j.title}</div>
+            <div class="card-company">${j.company}${j.location ? ' · ' + j.location : ''}</div>
+          </div>
+          <div class="card-badges" style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+            <span class="score-badge ${sc}">${j.score}%</span>
+            ${isNew && !tracked ? '<span style="font-size:10px;font-weight:700;color:#0369a1;background:#e0f2fe;padding:2px 7px;border-radius:10px;white-space:nowrap">✨ New</span>' : ''}
+            ${tracked ? '<span class="tracking-badge" style="font-size:10px;font-weight:700;color:#16a34a;background:#dcfce7;padding:2px 7px;border-radius:10px;white-space:nowrap">✓ Tracking</span>' : ''}
+            ${visited && !tracked ? '<span class="visited-badge" style="font-size:10px;font-weight:700;color:#6366f1;background:#ede9fe;padding:2px 7px;border-radius:10px;white-space:nowrap">👁 Visited</span>' : ''}
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="card-meta">
+            <div class="meta-item">${src}</div>
+            ${j.remote ? '<div class="meta-item">🏠 Remote</div>' : ''}
+            ${j.salary ? `<div class="meta-item">💰 ${j.salary}</div>` : ''}
+            ${j.postedAt ? `<div class="meta-item">📅 ${j.postedAt}</div>` : ''}
+          </div>
+          ${chips ? `<div class="skill-chips">${chips}</div>` : ''}
+          <div style="font-size:11px;color:#64748b;font-weight:600;margin-top:2px">${sl}</div>
+        </div>
+        <div class="card-actions">
+          <button class="card-btn" data-action="view-job" data-url="${j.url}">🔗 View Job</button>
+          <button class="card-btn${tracked ? ' tracked-btn' : ''}" data-finder-track="${j.id}" ${tracked ? 'disabled' : ''}>
+            ${tracked ? '✓ Tracked' : '+ Track'}
+          </button>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+async function searchJobs() {
+  const btn = document.getElementById('searchJobsBtn');
+  const statusEl = document.getElementById('finderStatus');
+  btn.disabled = true;
+  btn.textContent = '🔍 Searching…';
+  statusEl.style.display = '';
+  statusEl.textContent = 'Scraping LinkedIn & Indeed…';
+  statusEl.className = 'finder-status searching';
+
+  try {
+    const settings = loadSearchSettings();
+    const res = await fetch(`${BACKEND}/api/jobs/search`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(settings),
+    });
+    if (!res.ok) throw new Error('server error');
+    const { status } = await res.json();
+    if (status === 'already_searching') {
+      statusEl.textContent = 'Already searching, please wait…';
+    }
+    startPollStatus(btn, statusEl);
+  } catch {
+    btn.disabled = false;
+    btn.textContent = '🔍 Search New Jobs';
+    statusEl.textContent = 'Cannot reach server. Is it running?';
+    statusEl.className = 'finder-status error';
+  }
+}
+
+function startPollStatus(btn, statusEl) {
+  if (finderPollInterval) clearInterval(finderPollInterval);
+  finderPollInterval = setInterval(async () => {
+    try {
+      const res = await fetch(`${BACKEND}/api/jobs/status`);
+      const { status, found, error } = await res.json();
+      if (status === 'done') {
+        clearInterval(finderPollInterval);
+        btn.disabled = false;
+        btn.textContent = '🔍 Search New Jobs';
+        statusEl.textContent = `✓ Found ${found} new jobs`;
+        statusEl.className = 'finder-status';
+        loadFinderJobs();
+      } else if (status === 'error') {
+        clearInterval(finderPollInterval);
+        btn.disabled = false;
+        btn.textContent = '🔍 Search New Jobs';
+        statusEl.textContent = `Error: ${error}`;
+        statusEl.className = 'finder-status error';
+      }
+    } catch {}
+  }, 5000);
+}

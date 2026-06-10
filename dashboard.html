@@ -418,6 +418,89 @@ body {
   margin-top: 14px;
   display: block;
 }
+
+/* Main tab bar */
+.main-tabs {
+  display: flex;
+  padding: 0 28px;
+  background: #fff;
+  border-bottom: 1px solid #e2e8f0;
+}
+.main-tab {
+  padding: 14px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #64748b;
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -1px;
+  transition: all .15s;
+}
+.main-tab:hover { color: #2563eb; }
+.main-tab.active { color: #2563eb; border-bottom-color: #2563eb; }
+
+/* Finder panel */
+.finder-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 28px 0;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.finder-toolbar h2 { font-size: 15px; font-weight: 700; color: #1e293b; }
+.finder-toolbar-right { display: flex; align-items: center; gap: 10px; }
+.finder-status {
+  font-size: 12px;
+  color: #64748b;
+  padding: 5px 12px;
+  background: #f1f5f9;
+  border-radius: 20px;
+}
+.finder-status.searching { background: #dbeafe; color: #1d4ed8; }
+.finder-status.error     { background: #fee2e2; color: #dc2626; }
+
+/* Score badge */
+.score-badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+.score-high { background: #dcfce7; color: #15803d; }
+.score-mid  { background: #fef3c7; color: #b45309; }
+.score-low  { background: #fed7aa; color: #c2410c; }
+.score-weak { background: #f1f5f9; color: #64748b; }
+
+/* Skill chips */
+.skill-chips { display: flex; flex-wrap: wrap; gap: 4px; margin: 8px 0 4px; }
+.skill-chip {
+  background: #eff6ff;
+  color: #2563eb;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 12px;
+}
+
+.tracked-btn { background: #dcfce7 !important; color: #15803d !important; border-color: #86efac !important; }
+
+.finder-visited { background: #ddd6fe; border-color: #a5b4fc; }
+.finder-visited:hover { border-color: #818cf8; box-shadow: 0 4px 16px rgba(99,102,241,.15); }
+.finder-visited .card-title { color: #3730a3; }
+.finder-visited .card-avatar { background: #c4b5fd; color: #3b0764; }
+.finder-visited .card-company { color: #5b21b6; }
+.finder-visited .card-meta { color: #6d28d9; }
+.finder-new { background: #f0f9ff; border-color: #7dd3fc; }
+.finder-new:hover { border-color: #38bdf8; box-shadow: 0 4px 16px rgba(14,165,233,.12); }
+.finder-new .card-title { color: #0c4a6e; }
+.finder-new .card-avatar { background: #bae6fd; color: #0369a1; }
+.finder-new .card-company { color: #0284c7; }
+.finder-new .card-meta { color: #0369a1; }
 </style>
 </head>
 <body>
@@ -425,7 +508,7 @@ body {
 
   <div class="topbar">
     <div class="topbar-brand"><span>💼</span> JobTracker</div>
-    <div class="topbar-search">
+    <div class="topbar-search" id="trackerSearch">
       <input type="text" id="searchInput" placeholder="Search jobs, companies…">
     </div>
     <div class="topbar-actions">
@@ -433,6 +516,15 @@ body {
       <button class="tb-btn accent" id="addJobBtn">+ Add Job</button>
     </div>
   </div>
+
+  <!-- Main tabs -->
+  <div class="main-tabs">
+    <button class="main-tab active" id="tabTracker">My Applications</button>
+    <button class="main-tab" id="tabFinder">🔍 Find Jobs</button>
+  </div>
+
+  <!-- ── Tracker panel ────────────────────────────────────────────── -->
+  <div id="trackerPanel">
 
   <!-- Stats -->
   <div class="stats-row" id="statsRow">
@@ -487,6 +579,53 @@ body {
 
   <!-- Jobs -->
   <div class="jobs-grid" id="jobsGrid"></div>
+
+  </div><!-- end trackerPanel -->
+
+  <!-- ── Finder panel ─────────────────────────────────────────────── -->
+  <div id="finderPanel" style="display:none">
+    <div class="finder-toolbar">
+      <h2>Job Suggestions — Scored for Your Profile</h2>
+      <div class="finder-toolbar-right">
+        <div id="finderStatus" style="display:none" class="finder-status"></div>
+        <button class="btn btn-ghost" id="toggleSettingsBtn" style="font-size:12px">⚙ Settings</button>
+        <button class="btn btn-primary" id="searchJobsBtn">🔍 Search New Jobs</button>
+      </div>
+    </div>
+
+    <!-- Search settings drawer -->
+    <div id="searchSettingsPanel" style="display:none;margin:12px 28px 0;background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:18px 20px">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px">
+        <div>
+          <label style="display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#374151;margin-bottom:6px">
+            Search Keywords <span style="font-weight:400;color:#94a3b8">(one per line)</span>
+          </label>
+          <textarea id="settingsKeywords" rows="6" style="width:100%;padding:8px 10px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:12px;font-family:inherit;resize:vertical;outline:none" placeholder="backend engineer&#10;software engineer&#10;platform engineer"></textarea>
+          <div style="font-size:11px;color:#94a3b8;margin-top:4px">Broad terms work best — score badge shows how Go-relevant each job is</div>
+        </div>
+        <div>
+          <label style="display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#374151;margin-bottom:6px">
+            Job Board Websites <span style="font-weight:400;color:#94a3b8">(one per line)</span>
+          </label>
+          <textarea id="settingsWebsites" rows="6" style="width:100%;padding:8px 10px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:12px;font-family:inherit;resize:vertical;outline:none" placeholder="https://golang.cafe&#10;https://golangprojects.com&#10;https://golangjobs.xyz&#10;https://jobs.together.de"></textarea>
+          <div style="font-size:11px;color:#94a3b8;margin-top:4px">Paste any job site URL — works if the site includes job schema data (most do for Google)</div>
+        </div>
+        <div>
+          <label style="display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#374151;margin-bottom:6px">
+            Custom LinkedIn Searches <span style="font-weight:400;color:#94a3b8">(one per line)</span>
+          </label>
+          <textarea id="settingsUrls" rows="6" style="width:100%;padding:8px 10px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:12px;font-family:inherit;resize:vertical;outline:none" placeholder="https://www.linkedin.com/jobs/search/?keywords=devops+golang&#10;https://www.linkedin.com/jobs/search/?keywords=SRE+go&location=Germany"></textarea>
+          <div style="font-size:11px;color:#94a3b8;margin-top:4px">Open LinkedIn Jobs → set your filters → copy the URL → paste here</div>
+        </div>
+      </div>
+      <div style="margin-top:12px;display:flex;justify-content:flex-end">
+        <button class="btn btn-ghost" id="saveSettingsBtn" style="font-size:12px">Save</button>
+      </div>
+    </div>
+
+    <div class="jobs-grid" id="finderGrid"></div>
+  </div>
+
 </div>
 
 <!-- Add/Edit Modal -->
