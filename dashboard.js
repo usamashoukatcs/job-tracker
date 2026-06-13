@@ -423,16 +423,18 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!btn || btn.disabled) return;
     const job = finderJobs.find(j => j.id === btn.dataset.finderTrack);
     if (!job) return;
-    const normUrl = u => (u || '').split('#')[0].replace(/\/$/, '').toLowerCase();
+    btn.disabled = true;
+    btn.textContent = '…';
+    // Re-fetch latest jobs before adding to catch any auto-tracked entries since last load
+    const freshRes = await send('GET_JOBS');
+    allJobs = freshRes?.jobs || allJobs;
+    const normUrl = u => (u || '').split('#')[0].split('?')[0].replace(/\/$/, '').toLowerCase();
     const alreadyTracked = allJobs.some(j => j.url && normUrl(j.url) === normUrl(job.url));
     if (alreadyTracked) {
-      btn.disabled = true;
       btn.textContent = '✓ Tracked';
       btn.classList.add('tracked-btn');
       return;
     }
-    btn.disabled = true;
-    btn.textContent = '…';
     await new Promise(resolve =>
       chrome.runtime.sendMessage({
         type: 'ADD_JOB',
@@ -544,7 +546,7 @@ function renderFinderJobs() {
       </div>`;
     return;
   }
-  const normUrl = u => (u || '').split('#')[0].replace(/\/$/, '').toLowerCase();
+  const normUrl = u => (u || '').split('#')[0].split('?')[0].replace(/\/$/, '').toLowerCase();
   const appliedUrls = new Set(allJobs.filter(j => j.url).map(j => normUrl(j.url)));
 
   grid.innerHTML = finderJobs.map(j => {

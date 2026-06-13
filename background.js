@@ -318,7 +318,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
       case 'JOB_APPLIED': {
         if (msg.job.url) {
           const existing = await getJobs();
-          const norm = u => u.split('#')[0].replace(/\/$/, '').toLowerCase();
+          const norm = u => u.split('#')[0].split('?')[0].replace(/\/$/, '').toLowerCase();
           const dup = existing.find(j => j.url && norm(j.url) === norm(msg.job.url));
           if (dup) {
             reply({ ok: false, duplicate: true, appliedDate: dup.appliedDate });
@@ -336,9 +336,16 @@ chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
       case 'GET_JOBS':
         reply({ jobs: await getJobs() });
         break;
-      case 'ADD_JOB':
+      case 'ADD_JOB': {
+        const norm = u => (u || '').split('#')[0].split('?')[0].replace(/\/$/, '').toLowerCase();
+        if (msg.job.url) {
+          const existing = await getJobs();
+          const dup = existing.find(j => j.url && norm(j.url) === norm(msg.job.url));
+          if (dup) { reply({ job: dup, duplicate: true }); break; }
+        }
         reply({ job: await addJob(msg.job) });
         break;
+      }
       case 'UPDATE_JOB':
         reply({ job: await updateJob(msg.id, msg.updates) });
         break;

@@ -47,8 +47,10 @@ const COMPANY_SELECTORS = [
   '[class*="Company"] a'
 ];
 
-// Regex matching any apply/submit button — deduplication is handled by URL check in background
-const APPLY_BTN_RE = /\b(apply(\s*(now|here|for\s*(this\s*)?(job|position|role)))?|easy\s*apply|quick\s*apply|one.click\s*apply|submit(\s*my)?\s*application|complete\s*application|send(\s*my)?\s*application|finish\s*application|submit\s*and\s*apply)\b/i;
+// Final submission buttons — these confirm the application was actually sent
+const FINAL_SUBMIT_RE = /\b(submit(\s*my)?\s*application|complete\s*application|send(\s*my)?\s*application|finish\s*application|submit\s*and\s*apply)\b/i;
+// "Apply" buttons that just start the process — only used to track on form submit, not on click
+const APPLY_START_RE = /\b(apply(\s*(now|here|for\s*(this\s*)?(job|position|role)))?|easy\s*apply|quick\s*apply|one.click\s*apply)\b/i;
 
 function isJobPage() {
   const url = window.location.href.toLowerCase();
@@ -234,13 +236,20 @@ function setupTracking() {
     trackApplication(extractJobInfo());
   }, true);
 
-  // Click-based tracking for SPAs (LinkedIn, Greenhouse, etc.) that never fire submit
-  // appliedThisPage prevents double-firing when both click + submit happen on the same page
+  // Click-based tracking for SPAs (LinkedIn Easy Apply, etc.) that never fire a form submit.
+  // Only fires on final submission buttons — bare "Apply Now" clicks just start the flow
+  // and would double-track on multi-step applications.
   document.addEventListener('click', (e) => {
     const el = e.target.closest('button, a, [role="button"], input[type="submit"]');
     if (!el) return;
     const text = (el.textContent || el.value || el.getAttribute('aria-label') || '').replace(/\s+/g, ' ').trim();
-    if (!APPLY_BTN_RE.test(text)) return;
+    if (!FINAL_SUBMIT_RE.test(text) && !APPLY_START_RE.test(text)) return;
+    // For "Apply Now" type buttons, only track if there's no form on the page
+    // (meaning this IS the final action, e.g. LinkedIn Easy Apply one-click)
+    if (APPLY_START_RE.test(text) && !FINAL_SUBMIT_RE.test(text)) {
+      const hasForm = !!document.querySelector('form input[type="text"], form textarea, form input[type="file"]');
+      if (hasForm) return;
+    }
     trackApplication(extractJobInfo());
   }, true);
 }
