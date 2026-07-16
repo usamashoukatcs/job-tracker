@@ -552,13 +552,27 @@ function renderFinderJobs() {
   grid.innerHTML = finderJobs.map(j => {
     const sc = j.score >= 80 ? 'score-high' : j.score >= 60 ? 'score-mid' : j.score >= 40 ? 'score-low' : 'score-weak';
     const sl = j.score >= 80 ? 'Strong Match' : j.score >= 60 ? 'Good Match' : j.score >= 40 ? 'Partial Match' : 'Weak Match';
-    const src = j.source === 'linkedin'      ? '🔗 LinkedIn'
-              : j.source === 'google'        ? '🔍 Google Jobs'
-              : j.source === 'arbeitnow'     ? '🇪🇺 Arbeitnow'
-              : j.source === 'remoteok'      ? '🌍 RemoteOK'
-              : j.source === 'hn-hiring'     ? '🟠 HN Hiring'
-              : j.source === 'relocate'      ? '✈️ Relocate.me'
-              : j.source === 'swissdevjobs'  ? '🇨🇭 SwissDevJobs'
+    const src = j.source === 'linkedin'        ? '🔗 LinkedIn'
+              : j.source === 'google'          ? '🔍 Google Jobs'
+              : j.source === 'arbeitnow'       ? '🇪🇺 Arbeitnow'
+              : j.source === 'remoteok'        ? '🌍 RemoteOK'
+              : j.source === 'hn-hiring'       ? '🟠 HN Hiring'
+              : j.source === 'relocate'        ? '✈️ Relocate.me'
+              : j.source === 'swissdevjobs'    ? '🇨🇭 SwissDevJobs'
+              : j.source === 'remotive'        ? '🌐 Remotive'
+              : j.source === 'weworkremotely'  ? '💼 We Work Remotely'
+              : j.source === 'jobicy'          ? '🔎 Jobicy'
+              : j.source === 'themuse'         ? '🇺🇸 The Muse'
+              : j.source === 'seek'            ? '🦘 Seek.com.au'
+              : j.source === 'finn'            ? '🇳🇴 Finn.no'
+              : j.source === 'duunitori'       ? '🇫🇮 Duunitori'
+              : j.source === 'golang.cafe'     ? '🐹 golang.cafe'
+              : j.source === 'golangprojects'  ? '🐹 GolangProjects'
+              : j.source === 'workingnomads'   ? '🌍 Working Nomads'
+              : j.source === 'wellfound'       ? '🚀 Wellfound'
+              : j.source === 'devitjobs'       ? '🇪🇺 DevITjobs'
+              : j.source === '4dayweek'        ? '🌴 4dayweek.io'
+              : j.source?.startsWith('adzuna-') ? '🔍 Adzuna/' + j.source.split('-')[1]?.toUpperCase()
               : j.source?.startsWith('custom:') ? '🌐 ' + j.source.replace('custom:', '')
               : j.source?.startsWith('indeed-')  ? '📋 Indeed/' + j.source.split('-')[1]?.toUpperCase()
               : '📋 ' + j.source;
