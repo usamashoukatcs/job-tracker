@@ -580,6 +580,13 @@ function renderFinderJobs() {
     const tracked = trackedFinderUrls.has(j.url) || appliedUrls.has(normUrl(j.url));
     const visited = visitedFinderUrls.has(j.url);
     const isNew = j.createdAt && (Date.now() - new Date(j.createdAt).getTime()) < 24 * 60 * 60 * 1000;
+    const foundLabel = (() => {
+      if (!j.createdAt) return '';
+      const days = Math.floor((Date.now() - new Date(j.createdAt).getTime()) / 86400000);
+      if (days === 0) return 'Found today';
+      if (days === 1) return 'Found yesterday';
+      return 'Found ' + new Date(j.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    })();
     return `
       <div class="job-card${visited ? ' finder-visited' : ''}${isNew && !visited ? ' finder-new' : ''}">
         <div class="card-header">
@@ -600,7 +607,8 @@ function renderFinderJobs() {
             <div class="meta-item">${src}</div>
             ${j.remote ? '<div class="meta-item">🏠 Remote</div>' : ''}
             ${j.salary ? `<div class="meta-item">💰 ${j.salary}</div>` : ''}
-            ${j.postedAt ? `<div class="meta-item">📅 ${j.postedAt}</div>` : ''}
+            ${foundLabel ? `<div class="meta-item">🗓 ${foundLabel}</div>` : ''}
+            ${j.postedAt ? `<div class="meta-item">📅 Posted: ${j.postedAt}</div>` : ''}
           </div>
           ${chips ? `<div class="skill-chips">${chips}</div>` : ''}
           <div style="font-size:11px;color:#64748b;font-weight:600;margin-top:2px">${sl}</div>
