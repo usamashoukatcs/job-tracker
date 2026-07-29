@@ -574,6 +574,9 @@ function renderFinderJobs() {
               : j.source === '4dayweek'        ? '🌴 4dayweek.io'
               : j.source === 'himalayas'       ? '🏔 Himalayas'
               : j.source === 'remote.co'       ? '🌐 Remote.co'
+              : j.source === 'glassdoor'       ? '🟢 Glassdoor'
+              : j.source === 'europeremotely'  ? '🇪🇺 EuropeRemotely'
+              : j.source === 'jobspresso'      ? '☕ Jobspresso'
               : j.source?.startsWith('adzuna-') ? '🔍 Adzuna/' + j.source.split('-')[1]?.toUpperCase()
               : j.source?.startsWith('custom:') ? '🌐 ' + j.source.replace('custom:', '')
               : j.source?.startsWith('indeed-')  ? '📋 Indeed/' + j.source.split('-')[1]?.toUpperCase()
