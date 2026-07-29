@@ -572,6 +572,8 @@ function renderFinderJobs() {
               : j.source === 'wellfound'       ? '🚀 Wellfound'
               : j.source === 'devitjobs'       ? '🇪🇺 DevITjobs'
               : j.source === '4dayweek'        ? '🌴 4dayweek.io'
+              : j.source === 'himalayas'       ? '🏔 Himalayas'
+              : j.source === 'remote.co'       ? '🌐 Remote.co'
               : j.source?.startsWith('adzuna-') ? '🔍 Adzuna/' + j.source.split('-')[1]?.toUpperCase()
               : j.source?.startsWith('custom:') ? '🌐 ' + j.source.replace('custom:', '')
               : j.source?.startsWith('indeed-')  ? '📋 Indeed/' + j.source.split('-')[1]?.toUpperCase()
