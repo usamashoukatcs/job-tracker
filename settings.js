@@ -14,6 +14,7 @@ async function load() {
   updateGmailToggle(settings.gmailEnabled);
   updateClaudeStatus(!!settings.claudeApiKey);
   updateGmailStatus(settings.gmailEnabled);
+  updateAIWritingToggle(settings.aiWritingEnabled !== false);
 
   const urlRes = await send('GET_REDIRECT_URL');
   if (urlRes?.url) document.getElementById('redirectUri').textContent = urlRes.url;
@@ -42,6 +43,15 @@ function updateGmailStatus(enabled) {
 function toggleGmail() {
   settings.gmailEnabled = !settings.gmailEnabled;
   updateGmailToggle(settings.gmailEnabled);
+}
+
+function updateAIWritingToggle(on) {
+  document.getElementById('aiWritingToggle').className = 'toggle ' + (on ? 'on' : '');
+}
+
+function toggleAIWriting() {
+  settings.aiWritingEnabled = !(settings.aiWritingEnabled !== false);
+  updateAIWritingToggle(settings.aiWritingEnabled);
 }
 
 async function testClaude() {
@@ -113,10 +123,11 @@ async function syncNow() {
 
 function collectSettings() {
   return {
-    claudeApiKey:   document.getElementById('claudeKey').value.trim(),
-    googleClientId: document.getElementById('googleClientId').value.trim(),
-    followUpDays:   parseInt(document.getElementById('followUpDays').value),
-    gmailEnabled:   settings.gmailEnabled || false
+    claudeApiKey:     document.getElementById('claudeKey').value.trim(),
+    googleClientId:   document.getElementById('googleClientId').value.trim(),
+    followUpDays:     parseInt(document.getElementById('followUpDays').value),
+    gmailEnabled:     settings.gmailEnabled || false,
+    aiWritingEnabled: settings.aiWritingEnabled !== false
   };
 }
 
@@ -151,6 +162,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('saveBtn').addEventListener('click', saveSettings);
   document.getElementById('testClaude').addEventListener('click', testClaude);
   document.getElementById('gmailToggle').addEventListener('click', toggleGmail);
+  document.getElementById('aiWritingToggle').addEventListener('click', toggleAIWriting);
   document.getElementById('showGmailSteps').addEventListener('click', e => {
     e.preventDefault();
     document.getElementById('gmailSteps').style.display = 'block';

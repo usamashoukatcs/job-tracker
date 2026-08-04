@@ -349,9 +349,13 @@ function scanTextareas() {
   });
 }
 
-// Watch for dynamically added textareas (SPAs load forms late)
-const observer = new MutationObserver(() => scanTextareas());
-observer.observe(document.body, { childList: true, subtree: true });
+// Watch for dynamically added textareas (SPAs load forms late) — only when AI writing is enabled
+const aiObserver = new MutationObserver(() => scanTextareas());
+chrome.storage.local.get('settings', (r) => {
+  if ((r.settings || {}).aiWritingEnabled === false) return;
+  scanTextareas();
+  aiObserver.observe(document.body, { childList: true, subtree: true });
+});
 
 // ── Gmail compose tracking ────────────────────────────────────────────────────
 
@@ -473,5 +477,4 @@ function setupGmailTracking() {
 }
 
 setupTracking();
-scanTextareas();
 setupGmailTracking();

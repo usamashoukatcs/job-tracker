@@ -15,7 +15,8 @@ async function getSettings() {
     claudeApiKey: '',
     googleClientId: '',
     followUpDays: 7,
-    gmailEnabled: false
+    gmailEnabled: false,
+    aiWritingEnabled: true
   };
 }
 
