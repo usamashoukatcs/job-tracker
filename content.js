@@ -306,7 +306,12 @@ function addAIButton(textarea) {
     btn.style.left = (r.right - btn.offsetWidth - 8) + 'px';
   }
 
-  textarea.addEventListener('focus', reposition);
+  textarea.addEventListener('focus', () => {
+    chrome.storage.local.get('settings', (r) => {
+      if ((r.settings || {}).aiWritingEnabled === false) return;
+      reposition();
+    });
+  });
   textarea.addEventListener('blur', e => {
     if (e.relatedTarget === btn) return;
     btn.style.display = 'none';
