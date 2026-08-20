@@ -3,6 +3,7 @@ let settings = {};
 let currentFilter = 'all';
 let currentSearch = '';
 let followupJobId = null;
+let viewMode = 'list';
 
 const BACKEND = 'http://localhost:8080';
 let finderJobs = [];
@@ -98,6 +99,77 @@ function renderFollowUps() {
       <button class="followup-btn" data-followup-id="${j.id}">Draft Follow-up</button>
     </div>
   `).join('');
+}
+
+function renderKanban() {
+  const COLS = [
+    { status: 'applied',   label: 'Applied',   dot: '#2563eb' },
+    { status: 'interview', label: 'Interview',  dot: '#16a34a' },
+    { status: 'offer',     label: 'Offer',      dot: '#d97706' },
+    { status: 'rejected',  label: 'Rejected',   dot: '#dc2626' },
+    { status: 'ghosted',   label: 'Ghosted',    dot: '#94a3b8' },
+  ];
+
+  const search = currentSearch.toLowerCase();
+  const board = document.getElementById('kanbanBoard');
+
+  board.innerHTML = COLS.map(col => {
+    let jobs = allJobs.filter(j => j.status === col.status);
+    if (search) {
+      jobs = jobs.filter(j =>
+        j.title.toLowerCase().includes(search) ||
+        j.company.toLowerCase().includes(search) ||
+        (j.notes || '').toLowerCase().includes(search)
+      );
+    }
+
+    const cards = jobs.length === 0
+      ? `<div class="kanban-empty">No jobs</div>`
+      : jobs.map(j => {
+          const days = daysSince(j.appliedDate);
+          const daysLabel = days === 0 ? 'today' : days === 1 ? '1 day ago' : `${days}d ago`;
+          return `
+            <div class="kanban-card" data-job-id="${j.id}">
+              <div class="kanban-card-top">
+                <div class="kanban-card-title">${j.title}</div>
+              </div>
+              <div class="kanban-card-company">${j.company}</div>
+              <div class="kanban-card-footer">
+                <span class="kanban-card-days">📅 ${daysLabel}</span>
+                <select data-action="status" data-job-id="${j.id}">
+                  <option value="">Move →</option>
+                  <option value="applied">Applied</option>
+                  <option value="interview">Interview</option>
+                  <option value="offer">Offer</option>
+                  <option value="rejected">Rejected</option>
+                  <option value="ghosted">Ghosted</option>
+                  <option value="archived">Archived</option>
+                </select>
+              </div>
+            </div>`;
+        }).join('');
+
+    return `
+      <div class="kanban-col">
+        <div class="kanban-col-header">
+          <span class="col-label">
+            <span style="width:9px;height:9px;border-radius:50%;background:${col.dot};display:inline-block"></span>
+            ${col.label}
+          </span>
+          <span class="kanban-count">${jobs.length}</span>
+        </div>
+        <div class="kanban-cards">${cards}</div>
+      </div>`;
+  }).join('');
+}
+
+function setViewMode(mode) {
+  viewMode = mode;
+  document.getElementById('viewList').classList.toggle('active', mode === 'list');
+  document.getElementById('viewKanban').classList.toggle('active', mode === 'kanban');
+  document.getElementById('jobsGrid').style.display    = mode === 'list'   ? '' : 'none';
+  document.getElementById('kanbanBoard').style.display = mode === 'kanban' ? '' : 'none';
+  if (mode === 'kanban') renderKanban(); else renderJobs();
 }
 
 function renderJobs() {
@@ -300,7 +372,7 @@ async function reload() {
   settings = settingsRes?.settings || {};
   renderStats();
   renderFollowUps();
-  renderJobs();
+  if (viewMode === 'kanban') renderKanban(); else renderJobs();
 }
 
 // ── Init ─────────────────────────────────────────────────────────────────────
@@ -371,7 +443,19 @@ document.addEventListener('DOMContentLoaded', () => {
   // Search
   document.getElementById('searchInput').addEventListener('input', e => {
     currentSearch = e.target.value.trim();
-    renderJobs();
+    if (viewMode === 'kanban') renderKanban(); else renderJobs();
+  });
+
+  // View toggle
+  document.getElementById('viewList').addEventListener('click',   () => setViewMode('list'));
+  document.getElementById('viewKanban').addEventListener('click', () => setViewMode('kanban'));
+
+  // Kanban status selects (event delegation on the board)
+  document.getElementById('kanbanBoard').addEventListener('change', e => {
+    const sel = e.target.closest('[data-action="status"]');
+    if (!sel || !sel.value) return;
+    const jobId = sel.dataset.jobId;
+    if (jobId) quickStatus(jobId, sel.value);
   });
 
   // Auto-open add modal if ?add=1

@@ -501,6 +501,98 @@ body {
 .finder-new .card-avatar { background: #bae6fd; color: #0369a1; }
 .finder-new .card-company { color: #0284c7; }
 .finder-new .card-meta { color: #0369a1; }
+
+/* View toggle */
+.view-toggle { display: flex; gap: 4px; margin-left: auto; }
+.view-btn {
+  padding: 5px 12px;
+  border-radius: 20px;
+  border: 1.5px solid #e2e8f0;
+  background: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  color: #64748b;
+  transition: all .15s;
+}
+.view-btn:hover { border-color: #93c5fd; color: #2563eb; }
+.view-btn.active { background: #2563eb; color: #fff; border-color: #2563eb; }
+
+/* Kanban board */
+.kanban-board {
+  display: flex;
+  gap: 14px;
+  padding: 20px 28px 40px;
+  overflow-x: auto;
+  align-items: flex-start;
+}
+.kanban-col {
+  flex: 0 0 264px;
+  background: #f8fafc;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 300px);
+  min-height: 120px;
+}
+.kanban-col-header {
+  padding: 11px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #e2e8f0;
+  border-radius: 12px 12px 0 0;
+  background: #fff;
+}
+.kanban-col-header .col-label { display: flex; align-items: center; gap: 7px; }
+.kanban-count {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 20px;
+  background: #e2e8f0;
+  color: #475569;
+}
+.kanban-cards {
+  padding: 8px;
+  overflow-y: auto;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.kanban-card {
+  background: #fff;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  padding: 11px 12px;
+  transition: box-shadow .15s, border-color .15s;
+}
+.kanban-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,.08); border-color: #cbd5e1; }
+.kanban-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 6px; margin-bottom: 5px; }
+.kanban-card-title { font-size: 12px; font-weight: 700; color: #1e293b; line-height: 1.4; }
+.kanban-card-company { font-size: 11px; color: #64748b; margin-bottom: 8px; }
+.kanban-card-footer { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.kanban-card-days { font-size: 10px; color: #94a3b8; }
+.kanban-card select {
+  font-size: 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 5px;
+  padding: 2px 4px;
+  background: #f8fafc;
+  color: #475569;
+  cursor: pointer;
+}
+.kanban-empty {
+  font-size: 12px;
+  color: #cbd5e1;
+  text-align: center;
+  padding: 20px 10px;
+  font-style: italic;
+}
 </style>
 </head>
 <body>
@@ -566,7 +658,7 @@ body {
     <div class="followup-jobs" id="followupJobs" style="padding:0 28px;margin-top:8px;"></div>
   </div>
 
-  <!-- Filter chips -->
+  <!-- Filter chips + view toggle -->
   <div class="filter-row">
     <div class="filter-tab active" data-filter="all">All</div>
     <div class="filter-tab" data-filter="applied">Applied</div>
@@ -575,10 +667,17 @@ body {
     <div class="filter-tab" data-filter="rejected">Rejected</div>
     <div class="filter-tab" data-filter="ghosted">Ghosted</div>
     <div class="filter-tab" data-filter="email">📧 Email Apps</div>
+    <div class="view-toggle">
+      <button class="view-btn active" id="viewList">☰ List</button>
+      <button class="view-btn" id="viewKanban">⬜ Board</button>
+    </div>
   </div>
 
-  <!-- Jobs -->
+  <!-- Jobs (list view) -->
   <div class="jobs-grid" id="jobsGrid"></div>
+
+  <!-- Kanban board view -->
+  <div class="kanban-board" id="kanbanBoard" style="display:none"></div>
 
   </div><!-- end trackerPanel -->
 
