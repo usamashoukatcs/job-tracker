@@ -8,6 +8,7 @@ let viewMode = 'list';
 const BACKEND = 'http://localhost:8080';
 let finderJobs = [];
 let finderPollInterval = null;
+let finderView = 'jobs'; // 'jobs' or 'posts'
 const trackedFinderUrls = new Set();
 const visitedFinderUrls = new Set(JSON.parse(localStorage.getItem('visitedFinderUrls') || '[]'));
 
@@ -465,6 +466,10 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('tabTracker').addEventListener('click', () => switchTab('tracker'));
   document.getElementById('tabFinder').addEventListener('click',  () => switchTab('finder'));
 
+  // Finder view toggle (Jobs / LinkedIn Posts)
+  document.getElementById('finderViewJobs').addEventListener('click',  () => setFinderView('jobs'));
+  document.getElementById('finderViewPosts').addEventListener('click', () => setFinderView('posts'));
+
   // Finder settings panel
   document.getElementById('toggleSettingsBtn').addEventListener('click', () => {
     const panel = document.getElementById('searchSettingsPanel');
@@ -619,8 +624,23 @@ async function loadFinderJobs() {
   }
 }
 
+function setFinderView(mode) {
+  finderView = mode;
+  document.getElementById('finderViewJobs').classList.toggle('active', mode === 'jobs');
+  document.getElementById('finderViewPosts').classList.toggle('active', mode === 'posts');
+  document.getElementById('finderHeading').textContent = mode === 'posts'
+    ? 'LinkedIn Hiring Posts — Golang Opportunities'
+    : 'Job Suggestions — Scored for Your Profile';
+  renderFinderJobs();
+}
+
 function renderFinderJobs() {
   const grid = document.getElementById('finderGrid');
+
+  const visibleJobs = finderView === 'posts'
+    ? finderJobs.filter(j => j.source === 'linkedin-post')
+    : finderJobs.filter(j => j.source !== 'linkedin-post');
+
   if (!finderJobs.length) {
     grid.innerHTML = `
       <div class="empty-state" style="grid-column:1/-1">
@@ -630,11 +650,71 @@ function renderFinderJobs() {
       </div>`;
     return;
   }
+  if (!visibleJobs.length) {
+    const icon = finderView === 'posts' ? '💬' : '💼';
+    const msg  = finderView === 'posts' ? 'No LinkedIn posts found yet' : 'No jobs found yet';
+    grid.innerHTML = `
+      <div class="empty-state" style="grid-column:1/-1">
+        <div class="es-icon">${icon}</div>
+        <div class="es-text">${msg}</div>
+        <div class="es-sub">Click "Search New Jobs" to refresh</div>
+      </div>`;
+    return;
+  }
+
   const normUrl = u => (u || '').split('#')[0].split('?')[0].replace(/\/$/, '').toLowerCase();
   const appliedUrls = new Set(allJobs.filter(j => j.url).map(j => normUrl(j.url)));
 
-  grid.innerHTML = finderJobs.map(j => {
-    const sc = j.score >= 80 ? 'score-high' : j.score >= 60 ? 'score-mid' : j.score >= 40 ? 'score-low' : 'score-weak';
+  grid.innerHTML = visibleJobs.map(j => {
+    if (j.source === 'linkedin-post') return renderPostCard(j, normUrl, appliedUrls);
+    return renderJobCard(j, normUrl, appliedUrls);
+  }).join('');
+}
+
+function renderPostCard(j, normUrl, appliedUrls) {
+  const sc = j.score >= 80 ? 'score-high' : j.score >= 60 ? 'score-mid' : j.score >= 40 ? 'score-low' : 'score-weak';
+  const chips = (j.matchedSkills || []).map(s => `<span class="skill-chip">${s}</span>`).join('');
+  const visited = visitedFinderUrls.has(j.url);
+  const tracked = trackedFinderUrls.has(j.url) || appliedUrls.has(normUrl(j.url));
+  const foundLabel = (() => {
+    if (!j.createdAt) return '';
+    const days = Math.floor((Date.now() - new Date(j.createdAt).getTime()) / 86400000);
+    return days === 0 ? 'Found today' : days === 1 ? 'Found yesterday'
+      : 'Found ' + new Date(j.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  })();
+  return `
+    <div class="job-card${visited ? ' finder-visited' : ''}">
+      <div class="card-header">
+        <div class="card-avatar" style="background:#e0f2fe;color:#0369a1;font-size:20px">💬</div>
+        <div class="card-main">
+          <div class="card-title">${j.title}</div>
+          <div class="card-company">${j.company || 'LinkedIn'}</div>
+        </div>
+        <div class="card-badges" style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+          <span class="score-badge ${sc}">${j.score}%</span>
+          ${tracked ? '<span class="tracking-badge" style="font-size:10px;font-weight:700;color:#16a34a;background:#dcfce7;padding:2px 7px;border-radius:10px;white-space:nowrap">✓ Tracked</span>' : ''}
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="card-meta">
+          <div class="meta-item">🔗 LinkedIn Post</div>
+          ${foundLabel ? `<div class="meta-item">🗓 ${foundLabel}</div>` : ''}
+          ${j.postedAt ? `<div class="meta-item">📅 ${j.postedAt}</div>` : ''}
+        </div>
+        ${chips ? `<div class="skill-chips">${chips}</div>` : ''}
+        ${j.description ? `<div class="card-notes" style="-webkit-line-clamp:3">${j.description}</div>` : ''}
+      </div>
+      <div class="card-actions">
+        <button class="card-btn" data-action="view-job" data-url="${j.url}">🔗 View Post</button>
+        <button class="card-btn${tracked ? ' tracked-btn' : ''}" data-finder-track="${j.id}" ${tracked ? 'disabled' : ''}>
+          ${tracked ? '✓ Tracked' : '+ Track'}
+        </button>
+      </div>
+    </div>`;
+}
+
+function renderJobCard(j, normUrl, appliedUrls) {
+  const sc = j.score >= 80 ? 'score-high' : j.score >= 60 ? 'score-mid' : j.score >= 40 ? 'score-low' : 'score-weak';
     const sl = j.score >= 80 ? 'Strong Match' : j.score >= 60 ? 'Good Match' : j.score >= 40 ? 'Partial Match' : 'Weak Match';
     const src = j.source === 'linkedin'        ? '🔗 LinkedIn'
               : j.source === 'google'          ? '🔍 Google Jobs'
@@ -709,7 +789,6 @@ function renderFinderJobs() {
           </button>
         </div>
       </div>`;
-  }).join('');
 }
 
 async function searchJobs() {

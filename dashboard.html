@@ -684,9 +684,13 @@ body {
   <!-- ── Finder panel ─────────────────────────────────────────────── -->
   <div id="finderPanel" style="display:none">
     <div class="finder-toolbar">
-      <h2>Job Suggestions — Scored for Your Profile</h2>
+      <h2 id="finderHeading">Job Suggestions — Scored for Your Profile</h2>
       <div class="finder-toolbar-right">
         <div id="finderStatus" style="display:none" class="finder-status"></div>
+        <div class="view-toggle">
+          <button class="view-btn active" id="finderViewJobs">💼 Jobs</button>
+          <button class="view-btn" id="finderViewPosts">💬 LinkedIn Posts</button>
+        </div>
         <button class="btn btn-ghost" id="toggleSettingsBtn" style="font-size:12px">⚙ Settings</button>
         <button class="btn btn-primary" id="searchJobsBtn">🔍 Search New Jobs</button>
       </div>
