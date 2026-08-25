@@ -17,7 +17,7 @@ body {
 .app { display: flex; flex-direction: column; min-height: 100vh; }
 
 .topbar {
-  background: #2563eb;
+  background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 60%, #3b82f6 100%);
   color: #fff;
   padding: 0 28px;
   display: flex;
@@ -518,6 +518,55 @@ body {
 .view-btn:hover { border-color: #93c5fd; color: #2563eb; }
 .view-btn.active { background: #2563eb; color: #fff; border-color: #2563eb; }
 
+/* Finder filter row */
+.finder-filter-row {
+  display: flex;
+  gap: 6px;
+  padding: 10px 28px 0;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.finder-chip {
+  padding: 4px 12px;
+  border-radius: 20px;
+  border: 1.5px solid #e2e8f0;
+  background: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  color: #64748b;
+  transition: all .15s;
+  white-space: nowrap;
+  user-select: none;
+}
+.finder-chip:hover { border-color: #93c5fd; color: #2563eb; }
+.finder-chip.active { background: #2563eb; color: #fff; border-color: #2563eb; }
+.finder-select {
+  padding: 5px 10px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
+  background: #fff;
+  cursor: pointer;
+  outline: none;
+}
+.finder-select:focus { border-color: #2563eb; }
+
+/* Score mini bar */
+.score-mini-bar-wrap {
+  width: 56px;
+  height: 3px;
+  border-radius: 2px;
+  background: #f1f5f9;
+  margin-top: 5px;
+}
+.score-mini-bar {
+  height: 3px;
+  border-radius: 2px;
+}
+
 /* Kanban board */
 .kanban-board {
   display: flex;
@@ -724,6 +773,27 @@ body {
       <div style="margin-top:12px;display:flex;justify-content:flex-end">
         <button class="btn btn-ghost" id="saveSettingsBtn" style="font-size:12px">Save</button>
       </div>
+    </div>
+
+    <!-- Finder filter + sort controls (jobs view) -->
+    <div class="finder-filter-row" id="finderFilterRow">
+      <span style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.4px;white-space:nowrap">Source:</span>
+      <div class="finder-chip active" data-src="all">All</div>
+      <div class="finder-chip" data-src="linkedin">🔗 LinkedIn</div>
+      <div class="finder-chip" data-src="google">🔍 Google</div>
+      <div class="finder-chip" data-src="hn">🟠 HN Hiring</div>
+      <div class="finder-chip" data-src="indeed">📋 Indeed</div>
+      <div class="finder-chip" data-src="golang">🐹 Golang Sites</div>
+      <div class="finder-chip" data-src="remote">🌍 Remote Boards</div>
+      <select class="finder-select" id="finderScoreFilter" title="Minimum score">
+        <option value="0">All Scores</option>
+        <option value="60">60%+ Match</option>
+        <option value="80">80%+ Match</option>
+      </select>
+      <select class="finder-select" id="finderSort" title="Sort order">
+        <option value="score">Best Match</option>
+        <option value="date">Newest Found</option>
+      </select>
     </div>
 
     <div class="jobs-grid" id="finderGrid"></div>

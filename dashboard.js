@@ -9,8 +9,12 @@ const BACKEND = 'http://localhost:8080';
 let finderJobs = [];
 let finderPollInterval = null;
 let finderView = 'jobs'; // 'jobs' or 'posts'
+let finderSourceFilter = 'all';
+let finderSort = 'score';
+let finderScoreMin = 0;
 const trackedFinderUrls = new Set();
 const visitedFinderUrls = new Set(JSON.parse(localStorage.getItem('visitedFinderUrls') || '[]'));
+const hiddenFinderIds = new Set(JSON.parse(localStorage.getItem('hiddenFinderIds') || '[]'));
 
 const DEFAULT_KEYWORDS = [
   'backend engineer',
@@ -470,6 +474,28 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('finderViewJobs').addEventListener('click',  () => setFinderView('jobs'));
   document.getElementById('finderViewPosts').addEventListener('click', () => setFinderView('posts'));
 
+  // Finder source filter chips
+  document.getElementById('finderFilterRow').addEventListener('click', e => {
+    const chip = e.target.closest('[data-src]');
+    if (!chip) return;
+    finderSourceFilter = chip.dataset.src;
+    document.querySelectorAll('[data-src]').forEach(c =>
+      c.classList.toggle('active', c === chip));
+    renderFinderJobs();
+  });
+
+  // Finder score min filter
+  document.getElementById('finderScoreFilter').addEventListener('change', e => {
+    finderScoreMin = parseInt(e.target.value, 10) || 0;
+    renderFinderJobs();
+  });
+
+  // Finder sort
+  document.getElementById('finderSort').addEventListener('change', e => {
+    finderSort = e.target.value;
+    renderFinderJobs();
+  });
+
   // Finder settings panel
   document.getElementById('toggleSettingsBtn').addEventListener('click', () => {
     const panel = document.getElementById('searchSettingsPanel');
@@ -483,6 +509,16 @@ document.addEventListener('DOMContentLoaded', () => {
   // Finder
   document.getElementById('searchJobsBtn').addEventListener('click', searchJobs);
   document.getElementById('finderGrid').addEventListener('click', async e => {
+    // Hide / Not Interested
+    const hideBtn = e.target.closest('[data-finder-hide]');
+    if (hideBtn) {
+      const id = hideBtn.dataset.finderHide;
+      hiddenFinderIds.add(id);
+      localStorage.setItem('hiddenFinderIds', JSON.stringify([...hiddenFinderIds]));
+      hideBtn.closest('.job-card').remove();
+      return;
+    }
+
     const viewBtn = e.target.closest('[data-action="view-job"]');
     if (viewBtn) {
       const url = viewBtn.dataset.url;
@@ -624,6 +660,22 @@ async function loadFinderJobs() {
   }
 }
 
+function matchesSourceFilter(j, filter) {
+  const src = j.source || '';
+  switch (filter) {
+    case 'linkedin': return src === 'linkedin';
+    case 'google':   return src === 'google';
+    case 'hn':       return src === 'hn-hiring';
+    case 'indeed':   return src.startsWith('indeed-');
+    case 'golang':   return src === 'golang.cafe' || src === 'golangprojects';
+    case 'remote': {
+      const explicit = ['linkedin','google','hn-hiring','linkedin-post','golang.cafe','golangprojects'];
+      return !explicit.includes(src) && !src.startsWith('indeed-');
+    }
+    default: return true;
+  }
+}
+
 function setFinderView(mode) {
   finderView = mode;
   document.getElementById('finderViewJobs').classList.toggle('active', mode === 'jobs');
@@ -631,15 +683,37 @@ function setFinderView(mode) {
   document.getElementById('finderHeading').textContent = mode === 'posts'
     ? 'LinkedIn Hiring Posts — Golang Opportunities'
     : 'Job Suggestions — Scored for Your Profile';
+  // Source filter chips are only meaningful for the jobs view
+  const filterRow = document.getElementById('finderFilterRow');
+  if (filterRow) filterRow.style.display = mode === 'posts' ? 'none' : '';
   renderFinderJobs();
 }
 
 function renderFinderJobs() {
   const grid = document.getElementById('finderGrid');
 
-  const visibleJobs = finderView === 'posts'
+  let visibleJobs = finderView === 'posts'
     ? finderJobs.filter(j => j.source === 'linkedin-post')
     : finderJobs.filter(j => j.source !== 'linkedin-post');
+
+  // Apply hidden filter
+  visibleJobs = visibleJobs.filter(j => !hiddenFinderIds.has(j.id));
+
+  // Apply source filter (jobs view only)
+  if (finderView !== 'posts' && finderSourceFilter !== 'all') {
+    visibleJobs = visibleJobs.filter(j => matchesSourceFilter(j, finderSourceFilter));
+  }
+
+  // Apply score minimum filter
+  if (finderScoreMin > 0) {
+    visibleJobs = visibleJobs.filter(j => j.score >= finderScoreMin);
+  }
+
+  // Apply sort (default is score desc, which comes from the server)
+  if (finderSort === 'date') {
+    visibleJobs = [...visibleJobs].sort((a, b) =>
+      new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+  }
 
   if (!finderJobs.length) {
     grid.innerHTML = `
@@ -682,6 +756,7 @@ function renderPostCard(j, normUrl, appliedUrls) {
     return days === 0 ? 'Found today' : days === 1 ? 'Found yesterday'
       : 'Found ' + new Date(j.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   })();
+  const barColorPost = j.score >= 80 ? '#16a34a' : j.score >= 60 ? '#d97706' : j.score >= 40 ? '#f97316' : '#94a3b8';
   return `
     <div class="job-card${visited ? ' finder-visited' : ''}">
       <div class="card-header">
@@ -692,6 +767,7 @@ function renderPostCard(j, normUrl, appliedUrls) {
         </div>
         <div class="card-badges" style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
           <span class="score-badge ${sc}">${j.score}%</span>
+          <div class="score-mini-bar-wrap"><div class="score-mini-bar" style="width:${j.score}%;background:${barColorPost}"></div></div>
           ${tracked ? '<span class="tracking-badge" style="font-size:10px;font-weight:700;color:#16a34a;background:#dcfce7;padding:2px 7px;border-radius:10px;white-space:nowrap">✓ Tracked</span>' : ''}
         </div>
       </div>
@@ -709,6 +785,7 @@ function renderPostCard(j, normUrl, appliedUrls) {
         <button class="card-btn${tracked ? ' tracked-btn' : ''}" data-finder-track="${j.id}" ${tracked ? 'disabled' : ''}>
           ${tracked ? '✓ Tracked' : '+ Track'}
         </button>
+        <button class="card-btn danger" data-finder-hide="${j.id}" title="Not interested">✕</button>
       </div>
     </div>`;
 }
@@ -756,6 +833,7 @@ function renderJobCard(j, normUrl, appliedUrls) {
       if (days === 1) return 'Found yesterday';
       return 'Found ' + new Date(j.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     })();
+    const barColor = j.score >= 80 ? '#16a34a' : j.score >= 60 ? '#d97706' : j.score >= 40 ? '#f97316' : '#94a3b8';
     return `
       <div class="job-card${visited ? ' finder-visited' : ''}${isNew && !visited ? ' finder-new' : ''}">
         <div class="card-header">
@@ -766,6 +844,7 @@ function renderJobCard(j, normUrl, appliedUrls) {
           </div>
           <div class="card-badges" style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
             <span class="score-badge ${sc}">${j.score}%</span>
+            <div class="score-mini-bar-wrap"><div class="score-mini-bar" style="width:${j.score}%;background:${barColor}"></div></div>
             ${isNew && !tracked ? '<span style="font-size:10px;font-weight:700;color:#0369a1;background:#e0f2fe;padding:2px 7px;border-radius:10px;white-space:nowrap">✨ New</span>' : ''}
             ${tracked ? '<span class="tracking-badge" style="font-size:10px;font-weight:700;color:#16a34a;background:#dcfce7;padding:2px 7px;border-radius:10px;white-space:nowrap">✓ Tracking</span>' : ''}
             ${visited && !tracked ? '<span class="visited-badge" style="font-size:10px;font-weight:700;color:#6366f1;background:#ede9fe;padding:2px 7px;border-radius:10px;white-space:nowrap">👁 Visited</span>' : ''}
@@ -780,13 +859,14 @@ function renderJobCard(j, normUrl, appliedUrls) {
             ${j.postedAt ? `<div class="meta-item">📅 Posted: ${j.postedAt}</div>` : ''}
           </div>
           ${chips ? `<div class="skill-chips">${chips}</div>` : ''}
-          <div style="font-size:11px;color:#64748b;font-weight:600;margin-top:2px">${sl}</div>
+          ${j.description ? `<div class="card-notes">${j.description}</div>` : ''}
         </div>
         <div class="card-actions">
           <button class="card-btn" data-action="view-job" data-url="${j.url}">🔗 View Job</button>
           <button class="card-btn${tracked ? ' tracked-btn' : ''}" data-finder-track="${j.id}" ${tracked ? 'disabled' : ''}>
             ${tracked ? '✓ Tracked' : '+ Track'}
           </button>
+          <button class="card-btn danger" data-finder-hide="${j.id}" title="Not interested">✕</button>
         </div>
       </div>`;
 }
