@@ -15,6 +15,7 @@ let finderScoreMin = 0;
 const trackedFinderUrls = new Set();
 const visitedFinderUrls = new Set(JSON.parse(localStorage.getItem('visitedFinderUrls') || '[]'));
 const hiddenFinderIds = new Set(JSON.parse(localStorage.getItem('hiddenFinderIds') || '[]'));
+const savedFinderIds  = new Set(JSON.parse(localStorage.getItem('savedFinderIds')  || '[]'));
 
 const DEFAULT_KEYWORDS = [
   'backend engineer',
@@ -470,9 +471,13 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('tabTracker').addEventListener('click', () => switchTab('tracker'));
   document.getElementById('tabFinder').addEventListener('click',  () => switchTab('finder'));
 
-  // Finder view toggle (Jobs / LinkedIn Posts)
+  // Stats tab
+  document.getElementById('tabStats').addEventListener('click', () => switchTab('stats'));
+
+  // Finder view toggle (Jobs / LinkedIn Posts / Saved)
   document.getElementById('finderViewJobs').addEventListener('click',  () => setFinderView('jobs'));
   document.getElementById('finderViewPosts').addEventListener('click', () => setFinderView('posts'));
+  document.getElementById('finderViewSaved').addEventListener('click', () => setFinderView('saved'));
 
   // Finder source filter chips
   document.getElementById('finderFilterRow').addEventListener('click', e => {
@@ -509,6 +514,20 @@ document.addEventListener('DOMContentLoaded', () => {
   // Finder
   document.getElementById('searchJobsBtn').addEventListener('click', searchJobs);
   document.getElementById('finderGrid').addEventListener('click', async e => {
+    // Save for later
+    const saveBtn = e.target.closest('[data-finder-save]');
+    if (saveBtn) {
+      const id = saveBtn.dataset.finderSave;
+      if (savedFinderIds.has(id)) {
+        savedFinderIds.delete(id);
+      } else {
+        savedFinderIds.add(id);
+      }
+      localStorage.setItem('savedFinderIds', JSON.stringify([...savedFinderIds]));
+      renderFinderJobs();
+      return;
+    }
+
     // Hide / Not Interested
     const hideBtn = e.target.closest('[data-finder-hide]');
     if (hideBtn) {
@@ -629,13 +648,15 @@ function saveSearchSettings() {
 // ── Finder ───────────────────────────────────────────────────────────────────
 
 function switchTab(tab) {
-  const isTracker = tab === 'tracker';
-  document.getElementById('tabTracker').classList.toggle('active', isTracker);
-  document.getElementById('tabFinder').classList.toggle('active', !isTracker);
-  document.getElementById('trackerPanel').style.display  = isTracker ? '' : 'none';
-  document.getElementById('trackerSearch').style.display = isTracker ? '' : 'none';
-  document.getElementById('finderPanel').style.display   = isTracker ? 'none' : '';
-  if (!isTracker) loadFinderJobs();
+  document.getElementById('tabTracker').classList.toggle('active', tab === 'tracker');
+  document.getElementById('tabFinder').classList.toggle('active',  tab === 'finder');
+  document.getElementById('tabStats').classList.toggle('active',   tab === 'stats');
+  document.getElementById('trackerPanel').style.display  = tab === 'tracker' ? '' : 'none';
+  document.getElementById('trackerSearch').style.display = tab === 'tracker' ? '' : 'none';
+  document.getElementById('finderPanel').style.display   = tab === 'finder'  ? '' : 'none';
+  document.getElementById('statsPanel').style.display    = tab === 'stats'   ? '' : 'none';
+  if (tab === 'finder') loadFinderJobs();
+  if (tab === 'stats')  renderAnalytics();
 }
 
 async function loadFinderJobs() {
@@ -678,26 +699,31 @@ function matchesSourceFilter(j, filter) {
 
 function setFinderView(mode) {
   finderView = mode;
-  document.getElementById('finderViewJobs').classList.toggle('active', mode === 'jobs');
+  document.getElementById('finderViewJobs').classList.toggle('active',  mode === 'jobs');
   document.getElementById('finderViewPosts').classList.toggle('active', mode === 'posts');
-  document.getElementById('finderHeading').textContent = mode === 'posts'
-    ? 'LinkedIn Hiring Posts — Golang Opportunities'
-    : 'Job Suggestions — Scored for Your Profile';
-  // Source filter chips are only meaningful for the jobs view
+  document.getElementById('finderViewSaved').classList.toggle('active', mode === 'saved');
+  document.getElementById('finderHeading').textContent =
+    mode === 'posts' ? 'LinkedIn Hiring Posts — Golang Opportunities' :
+    mode === 'saved' ? '⭐ Saved Jobs' :
+    'Job Suggestions — Scored for Your Profile';
+  // Source filter chips only make sense in the jobs view
   const filterRow = document.getElementById('finderFilterRow');
-  if (filterRow) filterRow.style.display = mode === 'posts' ? 'none' : '';
+  if (filterRow) filterRow.style.display = mode === 'jobs' ? '' : 'none';
   renderFinderJobs();
 }
 
 function renderFinderJobs() {
   const grid = document.getElementById('finderGrid');
 
-  let visibleJobs = finderView === 'posts'
-    ? finderJobs.filter(j => j.source === 'linkedin-post')
-    : finderJobs.filter(j => j.source !== 'linkedin-post');
+  let visibleJobs =
+    finderView === 'posts' ? finderJobs.filter(j => j.source === 'linkedin-post') :
+    finderView === 'saved' ? finderJobs.filter(j => savedFinderIds.has(j.id)) :
+    finderJobs.filter(j => j.source !== 'linkedin-post');
 
-  // Apply hidden filter
-  visibleJobs = visibleJobs.filter(j => !hiddenFinderIds.has(j.id));
+  // Apply hidden filter (not in saved view — user intentionally saved those)
+  if (finderView !== 'saved') {
+    visibleJobs = visibleJobs.filter(j => !hiddenFinderIds.has(j.id));
+  }
 
   // Apply source filter (jobs view only)
   if (finderView !== 'posts' && finderSourceFilter !== 'all') {
@@ -757,6 +783,7 @@ function renderPostCard(j, normUrl, appliedUrls) {
       : 'Found ' + new Date(j.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   })();
   const barColorPost = j.score >= 80 ? '#16a34a' : j.score >= 60 ? '#d97706' : j.score >= 40 ? '#f97316' : '#94a3b8';
+  const savedPost = savedFinderIds.has(j.id);
   return `
     <div class="job-card${visited ? ' finder-visited' : ''}">
       <div class="card-header">
@@ -784,6 +811,9 @@ function renderPostCard(j, normUrl, appliedUrls) {
         <button class="card-btn" data-action="view-job" data-url="${j.url}">🔗 View Post</button>
         <button class="card-btn${tracked ? ' tracked-btn' : ''}" data-finder-track="${j.id}" ${tracked ? 'disabled' : ''}>
           ${tracked ? '✓ Tracked' : '+ Track'}
+        </button>
+        <button class="card-btn${savedPost ? ' saved-btn' : ''}" data-finder-save="${j.id}" title="${savedPost ? 'Remove from saved' : 'Save for later'}">
+          ${savedPost ? '⭐' : '☆'}
         </button>
         <button class="card-btn danger" data-finder-hide="${j.id}" title="Not interested">✕</button>
       </div>
@@ -834,6 +864,7 @@ function renderJobCard(j, normUrl, appliedUrls) {
       return 'Found ' + new Date(j.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     })();
     const barColor = j.score >= 80 ? '#16a34a' : j.score >= 60 ? '#d97706' : j.score >= 40 ? '#f97316' : '#94a3b8';
+    const saved = savedFinderIds.has(j.id);
     return `
       <div class="job-card${visited ? ' finder-visited' : ''}${isNew && !visited ? ' finder-new' : ''}">
         <div class="card-header">
@@ -865,6 +896,9 @@ function renderJobCard(j, normUrl, appliedUrls) {
           <button class="card-btn" data-action="view-job" data-url="${j.url}">🔗 View Job</button>
           <button class="card-btn${tracked ? ' tracked-btn' : ''}" data-finder-track="${j.id}" ${tracked ? 'disabled' : ''}>
             ${tracked ? '✓ Tracked' : '+ Track'}
+          </button>
+          <button class="card-btn${saved ? ' saved-btn' : ''}" data-finder-save="${j.id}" title="${saved ? 'Remove from saved' : 'Save for later'}">
+            ${saved ? '⭐' : '☆'}
           </button>
           <button class="card-btn danger" data-finder-hide="${j.id}" title="Not interested">✕</button>
         </div>
@@ -923,4 +957,116 @@ function startPollStatus(btn, statusEl) {
       }
     } catch {}
   }, 5000);
+}
+
+// ── Analytics ─────────────────────────────────────────────────────────────────
+
+function getWeeklyApplications(jobs, numWeeks = 8) {
+  const now = new Date();
+  const weeks = [];
+  for (let i = numWeeks - 1; i >= 0; i--) {
+    const weekStart = new Date(now);
+    weekStart.setDate(now.getDate() - now.getDay() - i * 7);
+    weekStart.setHours(0, 0, 0, 0);
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 7);
+    const label = weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const count = jobs.filter(j => {
+      if (!j.appliedDate) return false;
+      const d = new Date(j.appliedDate);
+      return d >= weekStart && d < weekEnd;
+    }).length;
+    weeks.push({ label, count });
+  }
+  return weeks;
+}
+
+function renderAnalytics() {
+  const jobs = allJobs;
+  const total = jobs.length;
+  const responded   = jobs.filter(j => ['interview','offer','rejected'].includes(j.status)).length;
+  const interviewed = jobs.filter(j => ['interview','offer'].includes(j.status)).length;
+  const offered     = jobs.filter(j => j.status === 'offer').length;
+  const active      = jobs.filter(j => !['rejected','archived','ghosted'].includes(j.status)).length;
+  const responseRate  = total ? Math.round(responded   / total * 100) : 0;
+  const interviewRate = total ? Math.round(interviewed / total * 100) : 0;
+
+  document.getElementById('kpiRow').innerHTML = `
+    <div class="kpi-card">
+      <div class="kpi-value c-blue">${total}</div>
+      <div class="kpi-label">Total Applied</div>
+      <div class="kpi-sub">${active} active in pipeline</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-value ${responseRate >= 20 ? 'c-green' : responseRate >= 8 ? 'c-yellow' : 'c-red'}">${responseRate}%</div>
+      <div class="kpi-label">Response Rate</div>
+      <div class="kpi-sub">${responded} of ${total} heard back</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-value ${interviewRate >= 10 ? 'c-green' : 'c-yellow'}">${interviewRate}%</div>
+      <div class="kpi-label">Interview Rate</div>
+      <div class="kpi-sub">${interviewed} interview${interviewed !== 1 ? 's' : ''}</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-value c-yellow">${offered}</div>
+      <div class="kpi-label">Offers</div>
+      <div class="kpi-sub">${offered ? '🎉 Nice work!' : 'Keep going!'}</div>
+    </div>
+  `;
+
+  // Weekly bar chart
+  const weeks = getWeeklyApplications(jobs);
+  const maxCount = Math.max(...weeks.map(w => w.count), 1);
+  document.getElementById('weeklyChart').innerHTML = weeks.map(w => `
+    <div class="bar-col">
+      <div class="bar-count">${w.count > 0 ? w.count : ''}</div>
+      <div class="bar-fill" style="height:${Math.round(w.count / maxCount * 90)}px"></div>
+      <div class="bar-label">${w.label}</div>
+    </div>
+  `).join('');
+
+  // Status breakdown
+  const statusDefs = [
+    { key: 'applied',   label: 'Applied',   color: '#2563eb' },
+    { key: 'interview', label: 'Interview',  color: '#16a34a' },
+    { key: 'offer',     label: 'Offer',      color: '#d97706' },
+    { key: 'rejected',  label: 'Rejected',   color: '#dc2626' },
+    { key: 'ghosted',   label: 'Ghosted',    color: '#94a3b8' },
+  ];
+  const maxStatus = Math.max(...statusDefs.map(s => jobs.filter(j => j.status === s.key).length), 1);
+  document.getElementById('statusChart').innerHTML = statusDefs.map(s => {
+    const count = jobs.filter(j => j.status === s.key).length;
+    return `
+      <div class="hbar-row">
+        <div class="hbar-label">${s.label}</div>
+        <div class="hbar-track"><div class="hbar-fill" style="width:${Math.round(count/maxStatus*100)}%;background:${s.color}"></div></div>
+        <div class="hbar-count">${count}</div>
+      </div>`;
+  }).join('');
+
+  // Method breakdown
+  const methodDefs = [
+    { key: 'online',   label: '🌐 Online'   },
+    { key: 'linkedin', label: '🔗 LinkedIn'  },
+    { key: 'email',    label: '📧 Email'     },
+    { key: 'referral', label: '🤝 Referral'  },
+  ];
+  const methodCounts = {};
+  for (const j of jobs) {
+    const m = j.applicationMethod || 'online';
+    methodCounts[m] = (methodCounts[m] || 0) + 1;
+  }
+  const maxMethod = Math.max(...Object.values(methodCounts), 1);
+  document.getElementById('methodChart').innerHTML = methodDefs
+    .filter(m => methodCounts[m.key])
+    .sort((a, b) => (methodCounts[b.key] || 0) - (methodCounts[a.key] || 0))
+    .map(m => {
+      const count = methodCounts[m.key] || 0;
+      return `
+        <div class="hbar-row">
+          <div class="hbar-label">${m.label}</div>
+          <div class="hbar-track"><div class="hbar-fill" style="width:${Math.round(count/maxMethod*100)}%;background:#6366f1"></div></div>
+          <div class="hbar-count">${count}</div>
+        </div>`;
+    }).join('') || '<div style="font-size:12px;color:#94a3b8">No data yet</div>';
 }
