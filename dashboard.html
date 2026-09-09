@@ -966,6 +966,9 @@ body[data-theme="dark"] .tl-note { color: #94a3b8; }
     <div class="finder-toolbar">
       <h2 id="finderHeading">Job Suggestions — Scored for Your Profile</h2>
       <div class="finder-toolbar-right">
+        <input type="text" id="finderSearch" placeholder="🔎 Search jobs…"
+          style="padding:6px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:13px;outline:none;width:190px;transition:border-color .15s"
+          onfocus="this.style.borderColor='#2563eb'" onblur="this.style.borderColor='#e2e8f0'">
         <div id="finderStatus" style="display:none" class="finder-status"></div>
         <div class="view-toggle">
           <button class="view-btn active" id="finderViewJobs">💼 Jobs</button>

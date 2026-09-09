@@ -18,6 +18,7 @@ let finderView = 'jobs'; // 'jobs' or 'posts'
 let finderSourceFilter = 'all';
 let finderSort = 'score';
 let finderScoreMin = 0;
+let finderSearch = '';
 const trackedFinderUrls = new Set();
 const visitedFinderUrls = new Set(JSON.parse(localStorage.getItem('visitedFinderUrls') || '[]'));
 const hiddenFinderIds = new Set(JSON.parse(localStorage.getItem('hiddenFinderIds') || '[]'));
@@ -530,6 +531,12 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('finderViewPosts').addEventListener('click', () => setFinderView('posts'));
   document.getElementById('finderViewSaved').addEventListener('click', () => setFinderView('saved'));
 
+  // Finder text search
+  document.getElementById('finderSearch').addEventListener('input', e => {
+    finderSearch = e.target.value.trim();
+    renderFinderJobs();
+  });
+
   // Finder source filter chips
   document.getElementById('finderFilterRow').addEventListener('click', e => {
     const chip = e.target.closest('[data-src]');
@@ -784,6 +791,16 @@ function renderFinderJobs() {
   // Apply score minimum filter
   if (finderScoreMin > 0) {
     visibleJobs = visibleJobs.filter(j => j.score >= finderScoreMin);
+  }
+
+  // Apply text search
+  if (finderSearch) {
+    const q = finderSearch.toLowerCase();
+    visibleJobs = visibleJobs.filter(j =>
+      (j.title   || '').toLowerCase().includes(q) ||
+      (j.company || '').toLowerCase().includes(q) ||
+      (j.description || '').toLowerCase().includes(q)
+    );
   }
 
   // Apply sort (default is score desc, which comes from the server)
