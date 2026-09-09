@@ -684,6 +684,37 @@ body {
 /* Saved badge */
 .saved-btn { background: #fef9c3 !important; color: #ca8a04 !important; border-color: #fde047 !important; }
 
+/* Toast notifications */
+#toast-container {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+}
+.toast {
+  background: #1e293b;
+  color: #f1f5f9;
+  padding: 10px 18px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow: 0 4px 16px rgba(0,0,0,.25);
+  opacity: 0;
+  transform: translateY(12px);
+  animation: toastIn .2s ease forwards, toastOut .3s ease 2.5s forwards;
+  pointer-events: none;
+}
+.toast.toast-success { border-left: 3px solid #16a34a; }
+.toast.toast-error   { border-left: 3px solid #dc2626; }
+.toast.toast-info    { border-left: 3px solid #2563eb; }
+@keyframes toastIn  { to { opacity: 1; transform: translateY(0); } }
+@keyframes toastOut { to { opacity: 0; transform: translateY(12px); } }
+body[data-theme="dark"] .toast { background: #0f172a; }
+
 /* ─── Dark mode ──────────────────────────────────────────────────────────── */
 body[data-theme="dark"] { background: #0f172a; color: #e2e8f0; }
 
@@ -1109,6 +1140,7 @@ body[data-theme="dark"] .tl-note { color: #94a3b8; }
   </div>
 </div>
 
+<div id="toast-container"></div>
 <script src="dashboard.js"></script>
 </body>
 </html>

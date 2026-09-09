@@ -35,6 +35,15 @@ const STATUS_BADGE = {
   offer: 'badge-offer', ghosted: 'badge-ghosted', archived: 'badge-archived'
 };
 
+function showToast(msg, type = 'info') {
+  const container = document.getElementById('toast-container');
+  const el = document.createElement('div');
+  el.className = `toast toast-${type}`;
+  el.textContent = msg;
+  container.appendChild(el);
+  setTimeout(() => el.remove(), 2900);
+}
+
 function toggleDarkMode() {
   const isDark = document.body.getAttribute('data-theme') === 'dark';
   const next = isDark ? 'light' : 'dark';
@@ -44,7 +53,7 @@ function toggleDarkMode() {
 }
 
 function exportCsv() {
-  if (!allJobs.length) { alert('No jobs to export yet.'); return; }
+  if (!allJobs.length) { showToast('No jobs to export yet.', 'error'); return; }
   const headers = ['Title', 'Company', 'Status', 'Applied Date', 'Method', 'URL', 'Notes'];
   const rows = allJobs.map(j => [
     j.title || '',
@@ -339,7 +348,7 @@ async function saveJob() {
   const id      = document.getElementById('editId').value;
   const title   = document.getElementById('fTitle').value.trim();
   const company = document.getElementById('fCompany').value.trim();
-  if (!title || !company) { alert('Title and company are required.'); return; }
+  if (!title || !company) { showToast('Title and company are required.', 'error'); return; }
 
   const data = {
     title, company,
@@ -384,7 +393,7 @@ function closeFollowupModal() {
 
 function copyDraft() {
   navigator.clipboard.writeText(document.getElementById('followupDraft').value)
-    .then(() => alert('Copied to clipboard!'));
+    .then(() => showToast('Copied to clipboard!', 'success'));
 }
 
 function openMailto() {
