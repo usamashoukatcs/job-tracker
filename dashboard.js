@@ -525,6 +525,14 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('tabTracker').addEventListener('click', () => switchTab('tracker'));
   document.getElementById('tabFinder').addEventListener('click',  () => switchTab('finder'));
 
+  // Weekly goal input
+  document.getElementById('goalInput').addEventListener('change', e => {
+    const v = Math.max(1, parseInt(e.target.value, 10) || 5);
+    e.target.value = v;
+    localStorage.setItem('weeklyGoal', v);
+    renderGoal();
+  });
+
   // Stats tab
   document.getElementById('tabStats').addEventListener('click', () => switchTab('stats'));
 
@@ -1051,7 +1059,28 @@ function getWeeklyApplications(jobs, numWeeks = 8) {
   return weeks;
 }
 
+function renderGoal() {
+  const goal = parseInt(localStorage.getItem('weeklyGoal') || '5', 10);
+  const input = document.getElementById('goalInput');
+  if (input) input.value = goal;
+
+  // Count applications this current week (Sun–Sat)
+  const now = new Date();
+  const weekStart = new Date(now);
+  weekStart.setDate(now.getDate() - now.getDay());
+  weekStart.setHours(0, 0, 0, 0);
+  const thisWeek = allJobs.filter(j => j.appliedDate && new Date(j.appliedDate) >= weekStart).length;
+
+  const pct = Math.min(100, Math.round(thisWeek / goal * 100));
+  const bar = document.getElementById('goalBar');
+  const label = document.getElementById('goalLabel');
+  if (bar)   bar.style.width = pct + '%';
+  if (bar)   bar.style.background = pct >= 100 ? '#16a34a' : pct >= 60 ? '#2563eb' : '#f97316';
+  if (label) label.textContent = `${thisWeek} / ${goal} this week${pct >= 100 ? ' 🎉' : ''}`;
+}
+
 function renderAnalytics() {
+  renderGoal();
   const jobs = allJobs;
   const total = jobs.length;
   const responded   = jobs.filter(j => ['interview','offer','rejected'].includes(j.status)).length;
