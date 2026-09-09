@@ -1,3 +1,9 @@
+// Apply saved dark mode before any rendering to avoid flash
+(function () {
+  const saved = localStorage.getItem('darkMode');
+  if (saved) document.body.setAttribute('data-theme', saved);
+})();
+
 let allJobs = [];
 let settings = {};
 let currentFilter = 'all';
@@ -28,6 +34,36 @@ const STATUS_BADGE = {
   applied: 'badge-applied', interview: 'badge-interview', rejected: 'badge-rejected',
   offer: 'badge-offer', ghosted: 'badge-ghosted', archived: 'badge-archived'
 };
+
+function toggleDarkMode() {
+  const isDark = document.body.getAttribute('data-theme') === 'dark';
+  const next = isDark ? 'light' : 'dark';
+  document.body.setAttribute('data-theme', next);
+  localStorage.setItem('darkMode', next);
+  document.getElementById('darkModeBtn').textContent = next === 'dark' ? '☀️' : '🌙';
+}
+
+function exportCsv() {
+  if (!allJobs.length) { alert('No jobs to export yet.'); return; }
+  const headers = ['Title', 'Company', 'Status', 'Applied Date', 'Method', 'URL', 'Notes'];
+  const rows = allJobs.map(j => [
+    j.title || '',
+    j.company || '',
+    j.status || '',
+    j.appliedDate ? new Date(j.appliedDate).toLocaleDateString('en-US') : '',
+    j.applicationMethod || '',
+    j.url || '',
+    (j.notes || '').replace(/\r?\n/g, ' '),
+  ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(','));
+  const csv = [headers.join(','), ...rows].join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = `job-applications-${new Date().toISOString().split('T')[0]}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 function initials(company) {
   return (company || '?').split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase();
@@ -384,6 +420,12 @@ async function reload() {
 // ── Init ─────────────────────────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', () => {
+
+  // Dark mode + export topbar buttons
+  const savedTheme = localStorage.getItem('darkMode') || 'light';
+  document.getElementById('darkModeBtn').textContent = savedTheme === 'dark' ? '☀️' : '🌙';
+  document.getElementById('darkModeBtn').addEventListener('click', toggleDarkMode);
+  document.getElementById('exportCsvBtn').addEventListener('click', exportCsv);
 
   // Topbar buttons
   document.getElementById('settingsNavBtn').addEventListener('click', () => {

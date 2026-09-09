@@ -683,6 +683,162 @@ body {
 
 /* Saved badge */
 .saved-btn { background: #fef9c3 !important; color: #ca8a04 !important; border-color: #fde047 !important; }
+
+/* ─── Dark mode ──────────────────────────────────────────────────────────── */
+body[data-theme="dark"] { background: #0f172a; color: #e2e8f0; }
+
+body[data-theme="dark"] .topbar {
+  background: linear-gradient(135deg, #020617 0%, #1e3a8a 60%, #1d4ed8 100%);
+}
+body[data-theme="dark"] .topbar-search input {
+  background: rgba(0,0,0,.35);
+}
+body[data-theme="dark"] .main-tabs {
+  background: #1e293b;
+  border-color: #334155;
+}
+body[data-theme="dark"] .main-tab { color: #94a3b8; }
+body[data-theme="dark"] .main-tab:hover { color: #60a5fa; }
+body[data-theme="dark"] .main-tab.active { color: #60a5fa; border-bottom-color: #3b82f6; }
+
+body[data-theme="dark"] .stat-card {
+  background: #1e293b;
+  border-color: #334155;
+}
+body[data-theme="dark"] .stat-card:hover { border-color: #3b82f6; }
+body[data-theme="dark"] .stat-card.active { background: #172554; border-color: #3b82f6; }
+body[data-theme="dark"] .stat-label { color: #64748b; }
+
+body[data-theme="dark"] .filter-tab {
+  background: #1e293b;
+  border-color: #334155;
+  color: #94a3b8;
+}
+body[data-theme="dark"] .filter-tab:hover { border-color: #3b82f6; color: #60a5fa; }
+body[data-theme="dark"] .filter-tab.active { background: #1d4ed8; border-color: #1d4ed8; color: #fff; }
+
+body[data-theme="dark"] .job-card {
+  background: #1e293b;
+  border-color: #334155;
+}
+body[data-theme="dark"] .job-card:hover { border-color: #475569; box-shadow: 0 4px 16px rgba(0,0,0,.4); }
+body[data-theme="dark"] .card-title { color: #f1f5f9; }
+body[data-theme="dark"] .card-company { color: #94a3b8; }
+body[data-theme="dark"] .card-meta { color: #64748b; }
+body[data-theme="dark"] .card-avatar { background: #1e3a8a; color: #93c5fd; }
+body[data-theme="dark"] .card-notes { background: #0f172a; color: #94a3b8; }
+body[data-theme="dark"] .card-actions { background: #162032; border-color: #334155; }
+body[data-theme="dark"] .card-btn {
+  background: #1e293b;
+  border-color: #334155;
+  color: #94a3b8;
+}
+body[data-theme="dark"] .card-btn:hover { background: #172554; border-color: #3b82f6; color: #60a5fa; }
+body[data-theme="dark"] .card-btn.danger:hover { background: #450a0a; border-color: #ef4444; color: #fca5a5; }
+
+body[data-theme="dark"] .finder-new { background: #0c2540; border-color: #0369a1; }
+body[data-theme="dark"] .finder-new .card-title { color: #7dd3fc; }
+body[data-theme="dark"] .finder-new .card-avatar { background: #0c4a6e; color: #7dd3fc; }
+body[data-theme="dark"] .finder-new .card-company { color: #38bdf8; }
+body[data-theme="dark"] .finder-new .card-meta { color: #0369a1; }
+body[data-theme="dark"] .finder-visited { background: #1a1040; border-color: #4c1d95; }
+body[data-theme="dark"] .finder-visited .card-title { color: #a5b4fc; }
+body[data-theme="dark"] .finder-visited .card-avatar { background: #2e1065; color: #a5b4fc; }
+body[data-theme="dark"] .finder-visited .card-company { color: #818cf8; }
+body[data-theme="dark"] .finder-visited .card-meta { color: #6d28d9; }
+
+body[data-theme="dark"] .view-btn {
+  background: #1e293b;
+  border-color: #334155;
+  color: #94a3b8;
+}
+body[data-theme="dark"] .view-btn:hover { border-color: #3b82f6; color: #60a5fa; }
+body[data-theme="dark"] .view-btn.active { background: #1d4ed8; border-color: #1d4ed8; color: #fff; }
+
+body[data-theme="dark"] .finder-chip {
+  background: #1e293b;
+  border-color: #334155;
+  color: #94a3b8;
+}
+body[data-theme="dark"] .finder-chip:hover { border-color: #3b82f6; color: #60a5fa; }
+body[data-theme="dark"] .finder-chip.active { background: #1d4ed8; border-color: #1d4ed8; color: #fff; }
+body[data-theme="dark"] .finder-select {
+  background: #1e293b;
+  border-color: #334155;
+  color: #94a3b8;
+}
+
+body[data-theme="dark"] .skill-chip { background: #172554; color: #93c5fd; }
+body[data-theme="dark"] .score-mini-bar-wrap { background: #334155; }
+body[data-theme="dark"] .finder-status { background: #1e293b; color: #94a3b8; }
+body[data-theme="dark"] .finder-status.searching { background: #172554; color: #93c5fd; }
+body[data-theme="dark"] .finder-status.error { background: #450a0a; color: #fca5a5; }
+
+body[data-theme="dark"] .followup-section { background: #1c1408; border-color: #854d0e; }
+body[data-theme="dark"] .followup-section .text strong { color: #fbbf24; }
+body[data-theme="dark"] .followup-section .text small { color: #d97706; }
+body[data-theme="dark"] .followup-job-item { background: #1e293b; border-color: #854d0e; }
+body[data-theme="dark"] .followup-job-item .info strong { color: #e2e8f0; }
+body[data-theme="dark"] .followup-job-item .info small { color: #94a3b8; }
+
+body[data-theme="dark"] .overlay { background: rgba(0,0,0,.65); }
+body[data-theme="dark"] .modal { background: #1e293b; }
+body[data-theme="dark"] .modal-title { color: #f1f5f9; }
+body[data-theme="dark"] .modal-close { background: #334155; color: #94a3b8; }
+body[data-theme="dark"] .modal-close:hover { background: #475569; }
+body[data-theme="dark"] .form-group label { color: #cbd5e1; }
+body[data-theme="dark"] .form-group input,
+body[data-theme="dark"] .form-group select,
+body[data-theme="dark"] .form-group textarea,
+body[data-theme="dark"] .draft-area {
+  background: #0f172a;
+  border-color: #334155;
+  color: #e2e8f0;
+}
+body[data-theme="dark"] .form-group input:focus,
+body[data-theme="dark"] .form-group select:focus,
+body[data-theme="dark"] .form-group textarea:focus { border-color: #3b82f6; }
+body[data-theme="dark"] .btn-ghost { background: #334155; color: #94a3b8; }
+body[data-theme="dark"] .btn-ghost:hover { background: #475569; }
+
+body[data-theme="dark"] .kanban-col { background: #162032; border-color: #334155; }
+body[data-theme="dark"] .kanban-col-header { background: #1e293b; border-color: #334155; }
+body[data-theme="dark"] .kanban-count { background: #334155; color: #94a3b8; }
+body[data-theme="dark"] .kanban-card { background: #1e293b; border-color: #334155; }
+body[data-theme="dark"] .kanban-card:hover { border-color: #475569; }
+body[data-theme="dark"] .kanban-card-title { color: #f1f5f9; }
+body[data-theme="dark"] .kanban-card-company { color: #94a3b8; }
+body[data-theme="dark"] .kanban-card-days { color: #64748b; }
+body[data-theme="dark"] .kanban-card select { background: #0f172a; border-color: #334155; color: #94a3b8; }
+body[data-theme="dark"] .kanban-empty { color: #334155; }
+
+body[data-theme="dark"] .kpi-card { background: #1e293b; border-color: #334155; }
+body[data-theme="dark"] .kpi-label { color: #64748b; }
+body[data-theme="dark"] .kpi-sub { color: #475569; }
+body[data-theme="dark"] .chart-card { background: #1e293b; border-color: #334155; }
+body[data-theme="dark"] .chart-title { color: #e2e8f0; }
+body[data-theme="dark"] .bar-fill { background: #3b82f6; }
+body[data-theme="dark"] .bar-count { color: #64748b; }
+body[data-theme="dark"] .bar-label { color: #475569; }
+body[data-theme="dark"] .hbar-label { color: #94a3b8; }
+body[data-theme="dark"] .hbar-track { background: #334155; }
+body[data-theme="dark"] .hbar-count { color: #64748b; }
+
+body[data-theme="dark"] #searchSettingsPanel {
+  background: #1e293b !important;
+  border-color: #334155 !important;
+}
+body[data-theme="dark"] #searchSettingsPanel label { color: #cbd5e1 !important; }
+body[data-theme="dark"] #searchSettingsPanel textarea {
+  background: #0f172a !important;
+  border-color: #334155 !important;
+  color: #e2e8f0 !important;
+}
+body[data-theme="dark"] .empty-state .es-text { color: #94a3b8; }
+body[data-theme="dark"] .empty-state .es-sub { color: #64748b; }
+body[data-theme="dark"] .timeline-title { color: #64748b; }
+body[data-theme="dark"] .tl-date { color: #64748b; }
+body[data-theme="dark"] .tl-note { color: #94a3b8; }
 </style>
 </head>
 <body>
@@ -694,6 +850,8 @@ body {
       <input type="text" id="searchInput" placeholder="Search jobs, companies…">
     </div>
     <div class="topbar-actions">
+      <button class="tb-btn" id="darkModeBtn" title="Toggle dark mode">🌙</button>
+      <button class="tb-btn" id="exportCsvBtn" title="Export tracked jobs to CSV">⬇ Export</button>
       <button class="tb-btn" id="settingsNavBtn">⚙ Settings</button>
       <button class="tb-btn accent" id="addJobBtn">+ Add Job</button>
     </div>
