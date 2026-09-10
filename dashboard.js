@@ -10,6 +10,7 @@ let currentFilter = 'all';
 let currentSearch = '';
 let followupJobId = null;
 let viewMode = 'list';
+let trackerSort = 'date-desc';
 
 const BACKEND = 'http://localhost:8080';
 let finderJobs = [];
@@ -115,6 +116,13 @@ function getFiltered() {
       j.company.toLowerCase().includes(q) ||
       (j.notes || '').toLowerCase().includes(q)
     );
+  }
+  const STATUS_ORDER = { offer: 0, interview: 1, applied: 2, ghosted: 3, rejected: 4, archived: 5 };
+  switch (trackerSort) {
+    case 'date-asc':  jobs.sort((a, b) => new Date(a.appliedDate) - new Date(b.appliedDate)); break;
+    case 'company':   jobs.sort((a, b) => (a.company || '').localeCompare(b.company || '')); break;
+    case 'status':    jobs.sort((a, b) => (STATUS_ORDER[a.status] ?? 9) - (STATUS_ORDER[b.status] ?? 9)); break;
+    default:          jobs.sort((a, b) => new Date(b.appliedDate) - new Date(a.appliedDate)); break;
   }
   return jobs;
 }
@@ -506,9 +514,13 @@ document.addEventListener('DOMContentLoaded', () => {
     if (viewMode === 'kanban') renderKanban(); else renderJobs();
   });
 
-  // View toggle
+  // View toggle + sort
   document.getElementById('viewList').addEventListener('click',   () => setViewMode('list'));
   document.getElementById('viewKanban').addEventListener('click', () => setViewMode('kanban'));
+  document.getElementById('trackerSort').addEventListener('change', e => {
+    trackerSort = e.target.value;
+    if (viewMode === 'kanban') renderKanban(); else renderJobs();
+  });
 
   // Kanban status selects (event delegation on the board)
   document.getElementById('kanbanBoard').addEventListener('change', e => {
