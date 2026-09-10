@@ -684,6 +684,23 @@ body {
 /* Saved badge */
 .saved-btn { background: #fef9c3 !important; color: #ca8a04 !important; border-color: #fde047 !important; }
 
+/* Confetti */
+.confetti-piece {
+  position: fixed;
+  width: 10px;
+  height: 10px;
+  top: -10px;
+  border-radius: 2px;
+  opacity: 0;
+  pointer-events: none;
+  animation: confettiFall linear forwards;
+  z-index: 99999;
+}
+@keyframes confettiFall {
+  0%   { opacity: 1; transform: translateY(0) rotate(0deg); }
+  100% { opacity: 0; transform: translateY(100vh) rotate(720deg); }
+}
+
 /* Toast notifications */
 #toast-container {
   position: fixed;

@@ -37,6 +37,25 @@ const STATUS_BADGE = {
   offer: 'badge-offer', ghosted: 'badge-ghosted', archived: 'badge-archived'
 };
 
+function launchConfetti() {
+  const colors = ['#2563eb','#16a34a','#d97706','#dc2626','#6366f1','#ec4899','#f59e0b'];
+  for (let i = 0; i < 80; i++) {
+    const el = document.createElement('div');
+    el.className = 'confetti-piece';
+    el.style.cssText = [
+      `left:${Math.random() * 100}vw`,
+      `background:${colors[Math.floor(Math.random() * colors.length)]}`,
+      `width:${6 + Math.random() * 8}px`,
+      `height:${6 + Math.random() * 8}px`,
+      `animation-duration:${1.2 + Math.random() * 2}s`,
+      `animation-delay:${Math.random() * 0.6}s`,
+      `border-radius:${Math.random() > 0.5 ? '50%' : '2px'}`,
+    ].join(';');
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 3500);
+  }
+}
+
 function showToast(msg, type = 'info') {
   const container = document.getElementById('toast-container');
   const el = document.createElement('div');
@@ -312,6 +331,10 @@ function renderJobs() {
 
 async function quickStatus(id, status) {
   await send('UPDATE_JOB', { id, updates: { status } });
+  if (status === 'offer') {
+    launchConfetti();
+    showToast('🎉 Congratulations on the offer!', 'success');
+  }
   await reload();
 }
 
