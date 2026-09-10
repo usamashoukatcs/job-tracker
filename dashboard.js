@@ -617,6 +617,17 @@ document.addEventListener('DOMContentLoaded', () => {
   // Finder
   document.getElementById('searchJobsBtn').addEventListener('click', searchJobs);
   document.getElementById('finderGrid').addEventListener('click', async e => {
+    // Quick Apply — open URL + pre-fill add modal
+    const applyBtn = e.target.closest('[data-finder-apply]');
+    if (applyBtn) {
+      const job = finderJobs.find(j => j.id === applyBtn.dataset.id);
+      if (!job) return;
+      window.open(job.url, '_blank');
+      switchTab('tracker');
+      openAddModal({ title: job.title, company: job.company, url: job.url });
+      return;
+    }
+
     // Save for later
     const saveBtn = e.target.closest('[data-finder-save]');
     if (saveBtn) {
@@ -1034,7 +1045,8 @@ function renderJobCard(j, normUrl, appliedUrls) {
           ${j.description ? `<div class="card-notes">${j.description}</div>` : ''}
         </div>
         <div class="card-actions">
-          <button class="card-btn" data-action="view-job" data-url="${j.url}">🔗 View Job</button>
+          <button class="card-btn" data-action="view-job" data-url="${j.url}">🔗 View</button>
+          ${!tracked ? `<button class="card-btn" style="background:#eff6ff;border-color:#93c5fd;color:#1d4ed8;font-weight:700" data-finder-apply data-id="${j.id}">✚ Apply</button>` : ''}
           <button class="card-btn${tracked ? ' tracked-btn' : ''}" data-finder-track="${j.id}" ${tracked ? 'disabled' : ''}>
             ${tracked ? '✓ Tracked' : '+ Track'}
           </button>
