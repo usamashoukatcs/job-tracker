@@ -691,6 +691,34 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  // Keyboard shortcuts
+  document.addEventListener('keydown', e => {
+    // Ignore when typing in an input/textarea/select
+    if (['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName)) return;
+    // Ignore when a modal is open
+    const modalOpen = document.getElementById('addModal').style.display !== 'none'
+      || document.getElementById('followupModal').style.display !== 'none';
+
+    switch (e.key) {
+      case '1': switchTab('tracker'); break;
+      case '2': switchTab('finder');  break;
+      case '3': switchTab('stats');   break;
+      case 'a': if (!modalOpen) openAddModal(); break;
+      case '/':
+        e.preventDefault();
+        if (!modalOpen) {
+          const activeTab = document.getElementById('tabFinder').classList.contains('active');
+          if (activeTab) document.getElementById('finderSearch')?.focus();
+          else           document.getElementById('searchInput')?.focus();
+        }
+        break;
+      case 'Escape':
+        closeModal();
+        closeFollowupModal();
+        break;
+    }
+  });
+
   reload();
 });
 
