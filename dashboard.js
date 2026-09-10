@@ -1119,6 +1119,26 @@ function renderGoal() {
   if (label) label.textContent = `${thisWeek} / ${goal} this week${pct >= 100 ? ' 🎉' : ''}`;
 }
 
+function calcStreak(jobs) {
+  const days = new Set(
+    jobs
+      .filter(j => j.appliedDate)
+      .map(j => new Date(j.appliedDate).toLocaleDateString('en-CA')) // YYYY-MM-DD
+  );
+  let streak = 0;
+  const d = new Date();
+  // If nothing applied today, allow yesterday to still count as the streak start
+  const todayStr = d.toLocaleDateString('en-CA');
+  if (!days.has(todayStr)) d.setDate(d.getDate() - 1);
+  while (true) {
+    const key = d.toLocaleDateString('en-CA');
+    if (!days.has(key)) break;
+    streak++;
+    d.setDate(d.getDate() - 1);
+  }
+  return streak;
+}
+
 function renderAnalytics() {
   renderGoal();
   const jobs = allJobs;
@@ -1129,6 +1149,7 @@ function renderAnalytics() {
   const active      = jobs.filter(j => !['rejected','archived','ghosted'].includes(j.status)).length;
   const responseRate  = total ? Math.round(responded   / total * 100) : 0;
   const interviewRate = total ? Math.round(interviewed / total * 100) : 0;
+  const streak = calcStreak(jobs);
 
   document.getElementById('kpiRow').innerHTML = `
     <div class="kpi-card">
@@ -1150,6 +1171,11 @@ function renderAnalytics() {
       <div class="kpi-value c-yellow">${offered}</div>
       <div class="kpi-label">Offers</div>
       <div class="kpi-sub">${offered ? '🎉 Nice work!' : 'Keep going!'}</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-value" style="color:${streak >= 7 ? '#dc2626' : streak >= 3 ? '#d97706' : '#64748b'}">${streak}${streak > 0 ? ' 🔥' : ''}</div>
+      <div class="kpi-label">Day Streak</div>
+      <div class="kpi-sub">${streak === 0 ? 'Apply today to start!' : streak === 1 ? 'Started — keep going!' : `${streak} days in a row`}</div>
     </div>
   `;
 
