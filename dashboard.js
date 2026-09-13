@@ -149,12 +149,19 @@ function getFiltered() {
 // ── Render ───────────────────────────────────────────────────────────────────
 
 function renderStats() {
-  document.getElementById('sAll').textContent      = allJobs.length;
-  document.getElementById('sApplied').textContent  = allJobs.filter(j => j.status === 'applied').length;
+  document.getElementById('sAll').textContent       = allJobs.length;
+  document.getElementById('sApplied').textContent   = allJobs.filter(j => j.status === 'applied').length;
   document.getElementById('sInterview').textContent = allJobs.filter(j => j.status === 'interview').length;
-  document.getElementById('sOffer').textContent    = allJobs.filter(j => j.status === 'offer').length;
-  document.getElementById('sRejected').textContent = allJobs.filter(j => j.status === 'rejected').length;
-  document.getElementById('sGhosted').textContent  = allJobs.filter(j => j.status === 'ghosted').length;
+  document.getElementById('sOffer').textContent     = allJobs.filter(j => j.status === 'offer').length;
+  document.getElementById('sRejected').textContent  = allJobs.filter(j => j.status === 'rejected').length;
+  document.getElementById('sGhosted').textContent   = allJobs.filter(j => j.status === 'ghosted').length;
+
+  const todayStr = new Date().toLocaleDateString('en-CA');
+  const todayCount = allJobs.filter(j =>
+    j.appliedDate && new Date(j.appliedDate).toLocaleDateString('en-CA') === todayStr
+  ).length;
+  const todayEl = document.getElementById('sToday');
+  if (todayEl) todayEl.textContent = todayCount;
 }
 
 function renderFollowUps() {
