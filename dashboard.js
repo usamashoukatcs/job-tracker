@@ -337,6 +337,7 @@ function renderJobs() {
           ${j.applicationMethod === 'email' ? `<button class="card-btn" data-action="followup" data-job-id="${j.id}">📧 Follow-up</button>` : ''}
           <a class="card-btn" href="https://www.glassdoor.com/Search/results.htm?keyword=${encodeURIComponent(j.company)}" target="_blank" title="Glassdoor reviews" style="text-decoration:none;display:flex;align-items:center;justify-content:center">🌟</a>
           <a class="card-btn" href="https://www.linkedin.com/search/results/companies/?keywords=${encodeURIComponent(j.company)}" target="_blank" title="LinkedIn company" style="text-decoration:none;display:flex;align-items:center;justify-content:center">🔗</a>
+          <button class="card-btn" data-action="copy" data-job-id="${j.id}" title="Copy job details">📋</button>
           <button class="card-btn danger" data-action="delete" data-job-id="${j.id}">🗑</button>
         </div>
       </div>`;
@@ -518,6 +519,13 @@ document.addEventListener('DOMContentLoaded', () => {
     if (action === 'edit')     editJob(jobId);
     if (action === 'delete')   deleteJob(jobId);
     if (action === 'followup') openFollowupModal(jobId);
+    if (action === 'copy') {
+      const job = allJobs.find(j => j.id === jobId);
+      if (job) {
+        const text = [job.title, job.company, job.url].filter(Boolean).join(' | ');
+        navigator.clipboard.writeText(text).then(() => showToast('Job details copied!', 'success'));
+      }
+    }
   });
 
   // Job grid: status select delegation
