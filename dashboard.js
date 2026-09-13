@@ -284,7 +284,7 @@ function renderJobs() {
       : '🌐 online';
 
     return `
-      <div class="job-card" id="card-${j.id}" data-job-id="${j.id}">
+      <div class="job-card" id="card-${j.id}" data-job-id="${j.id}" data-status="${j.status}">
         <div class="card-header">
           <div class="card-avatar">${initials(j.company)}</div>
           <div class="card-main">

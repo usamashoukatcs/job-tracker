@@ -133,6 +133,12 @@ body {
   cursor: pointer;
 }
 .job-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,.08); border-color: #cbd5e1; }
+.job-card[data-status="applied"]   { border-left: 3px solid #2563eb; }
+.job-card[data-status="interview"] { border-left: 3px solid #16a34a; }
+.job-card[data-status="offer"]     { border-left: 3px solid #d97706; }
+.job-card[data-status="rejected"]  { border-left: 3px solid #dc2626; }
+.job-card[data-status="ghosted"]   { border-left: 3px solid #94a3b8; }
+.job-card[data-status="archived"]  { border-left: 3px solid #e2e8f0; }
 
 .card-header {
   padding: 16px;
