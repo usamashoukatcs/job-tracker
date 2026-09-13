@@ -302,6 +302,15 @@ function renderJobs() {
             <div class="meta-item">${methodIcon}</div>
             ${j.url ? `<div class="meta-item"><a href="${j.url}" target="_blank" style="color:#2563eb;text-decoration:none">🔗 View Job</a></div>` : ''}
           </div>
+          ${(function() {
+            if (!j.interviewDate) return '';
+            const diff = Math.round((new Date(j.interviewDate) - Date.now()) / 86400000);
+            if (diff < -1) return '';
+            const label = diff < 0 ? 'was yesterday' : diff === 0 ? 'is today!' : diff === 1 ? 'is tomorrow' : `in ${diff} days`;
+            const bg = diff <= 1 ? '#dcfce7' : '#dbeafe';
+            const col = diff <= 1 ? '#15803d' : '#1d4ed8';
+            return `<div style="background:${bg};border:1px solid;border-color:${bg};border-radius:6px;padding:7px 10px;font-size:12px;color:${col};font-weight:600;margin-bottom:10px">📅 Interview ${label}</div>`;
+          })()}
           ${followupDue ? `<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:7px 10px;font-size:12px;color:#92400e;margin-bottom:10px">⏰ Follow-up overdue — ${daysAgo} days with no response</div>` : ''}
           ${j.notes ? `<div class="card-notes">${j.notes}</div>` : ''}
           ${events.length > 0 ? `<div class="timeline"><div class="timeline-title">History</div>${timeline}</div>` : ''}
@@ -353,6 +362,7 @@ function openAddModal(prefill) {
   document.getElementById('fStatus').value     = 'applied';
   document.getElementById('fMethod').value     = 'online';
   document.getElementById('fDate').value       = new Date().toISOString().split('T')[0];
+  document.getElementById('fInterviewDate').value = '';
   document.getElementById('fEmail').value      = '';
   document.getElementById('fNotes').value      = '';
   document.getElementById('addModal').style.display = 'flex';
@@ -369,6 +379,7 @@ function editJob(id) {
   document.getElementById('fStatus').value     = j.status;
   document.getElementById('fMethod').value     = j.applicationMethod || 'online';
   document.getElementById('fDate').value       = j.appliedDate ? j.appliedDate.split('T')[0] : '';
+  document.getElementById('fInterviewDate').value = j.interviewDate ? j.interviewDate.split('T')[0] : '';
   document.getElementById('fEmail').value      = j.contactEmail || '';
   document.getElementById('fNotes').value      = j.notes || '';
   document.getElementById('addModal').style.display = 'flex';
@@ -392,6 +403,9 @@ async function saveJob() {
     appliedDate: document.getElementById('fDate').value
       ? new Date(document.getElementById('fDate').value).toISOString()
       : new Date().toISOString(),
+    interviewDate: document.getElementById('fInterviewDate').value
+      ? new Date(document.getElementById('fInterviewDate').value).toISOString()
+      : null,
     contactEmail: document.getElementById('fEmail').value.trim(),
     notes:        document.getElementById('fNotes').value.trim()
   };
