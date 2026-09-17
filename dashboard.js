@@ -348,7 +348,7 @@ function renderJobs() {
           </div>
           <div class="card-badge">
             <span class="badge ${STATUS_BADGE[j.status] || 'badge-applied'}">${j.status}</span>
-          </div>
+            ${j.statusUpdated ? `<span style="font-size:10px;color:#94a3b8;display:block;text-align:right;margin-top:3px">${daysSince(j.statusUpdated)}d</span>` : ''}</div>
         </div>
 
         <div class="card-body">
@@ -395,7 +395,7 @@ function renderJobs() {
 // ── Job actions ──────────────────────────────────────────────────────────────
 
 async function quickStatus(id, status) {
-  await send('UPDATE_JOB', { id, updates: { status } });
+  await send('UPDATE_JOB', { id, updates: { status, statusUpdated: new Date().toISOString() } });
   if (status === 'offer') {
     launchConfetti();
     showToast('🎉 Congratulations on the offer!', 'success');
@@ -466,8 +466,14 @@ async function saveJob() {
     notes:        document.getElementById('fNotes').value.trim()
   };
 
-  if (id) await send('UPDATE_JOB', { id, updates: data });
-  else    await send('ADD_JOB', { job: data });
+  if (id) {
+    const existing = allJobs.find(j => j.id === id);
+    if (existing && existing.status !== data.status) data.statusUpdated = new Date().toISOString();
+    await send('UPDATE_JOB', { id, updates: data });
+  } else {
+    data.statusUpdated = new Date().toISOString();
+    await send('ADD_JOB', { job: data });
+  }
 
   closeModal();
   await reload();
