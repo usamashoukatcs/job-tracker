@@ -99,6 +99,22 @@ function initials(company) {
   return (company || '?').split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase();
 }
 
+const AVATAR_PALETTE = [
+  { bg: '#dbeafe', fg: '#1d4ed8' }, // blue
+  { bg: '#dcfce7', fg: '#15803d' }, // green
+  { bg: '#fce7f3', fg: '#9d174d' }, // pink
+  { bg: '#fed7aa', fg: '#c2410c' }, // orange
+  { bg: '#e9d5ff', fg: '#6d28d9' }, // purple
+  { bg: '#fef3c7', fg: '#b45309' }, // yellow
+  { bg: '#cffafe', fg: '#0e7490' }, // cyan
+  { bg: '#d1fae5', fg: '#065f46' }, // teal
+];
+function avatarStyle(company) {
+  const hash = (company || '').split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
+  const { bg, fg } = AVATAR_PALETTE[hash % AVATAR_PALETTE.length];
+  return `background:${bg};color:${fg}`;
+}
+
 function fmtDate(iso) {
   if (!iso) return '';
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -293,7 +309,7 @@ function renderJobs() {
     return `
       <div class="job-card" id="card-${j.id}" data-job-id="${j.id}" data-status="${j.status}">
         <div class="card-header">
-          <div class="card-avatar">${initials(j.company)}</div>
+          <div class="card-avatar" style="${avatarStyle(j.company)}">${initials(j.company)}</div>
           <div class="card-main">
             <div class="card-title">${j.title}</div>
             <div class="card-company">${j.company}</div>
@@ -1049,7 +1065,7 @@ function renderJobCard(j, normUrl, appliedUrls) {
     return `
       <div class="job-card${visited ? ' finder-visited' : ''}${isNew && !visited ? ' finder-new' : ''}">
         <div class="card-header">
-          <div class="card-avatar">${initials(j.company)}</div>
+          <div class="card-avatar" style="${avatarStyle(j.company)}">${initials(j.company)}</div>
           <div class="card-main">
             <div class="card-title">${j.title}</div>
             <div class="card-company">${j.company}${j.location ? ' · ' + j.location : ''}</div>
