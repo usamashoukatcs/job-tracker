@@ -11,6 +11,7 @@ let currentSearch = '';
 let followupJobId = null;
 let viewMode = 'list';
 let trackerSort = 'date-desc';
+const selectedIds = new Set();
 
 const BACKEND = 'http://localhost:8080';
 let finderJobs = [];
@@ -63,6 +64,34 @@ function showToast(msg, type = 'info') {
   el.textContent = msg;
   container.appendChild(el);
   setTimeout(() => el.remove(), 2900);
+}
+
+function updateBulkBar() {
+  const bar = document.getElementById('bulkBar');
+  const count = document.getElementById('bulkCount');
+  if (selectedIds.size > 0) {
+    bar.style.display = 'flex';
+    count.textContent = `${selectedIds.size} selected`;
+  } else {
+    bar.style.display = 'none';
+  }
+}
+
+function clearSelection() {
+  selectedIds.clear();
+  document.querySelectorAll('.job-card.selected').forEach(c => c.classList.remove('selected'));
+  updateBulkBar();
+}
+
+function toggleSelect(id, cardEl) {
+  if (selectedIds.has(id)) {
+    selectedIds.delete(id);
+    cardEl.classList.remove('selected');
+  } else {
+    selectedIds.add(id);
+    cardEl.classList.add('selected');
+  }
+  updateBulkBar();
 }
 
 function toggleDarkMode() {
@@ -308,6 +337,9 @@ function renderJobs() {
 
     return `
       <div class="job-card" id="card-${j.id}" data-job-id="${j.id}" data-status="${j.status}">
+        <label style="position:absolute;top:10px;right:10px;cursor:pointer;display:none" class="bulk-check">
+          <input type="checkbox" data-select-id="${j.id}" style="width:15px;height:15px;cursor:pointer" ${selectedIds.has(j.id) ? 'checked' : ''}>
+        </label>
         <div class="card-header">
           <div class="card-avatar" style="${avatarStyle(j.company)}">${initials(j.company)}</div>
           <div class="card-main">
@@ -525,6 +557,31 @@ document.addEventListener('DOMContentLoaded', () => {
     const tab = e.target.closest('.filter-tab[data-filter]');
     if (tab) setFilter(tab.dataset.filter, tab);
   });
+
+  // Bulk selection via checkbox
+  document.getElementById('jobsGrid').addEventListener('change', e => {
+    const cb = e.target.closest('[data-select-id]');
+    if (!cb) return;
+    toggleSelect(cb.dataset.selectId, cb.closest('.job-card'));
+  });
+
+  // Bulk action buttons
+  document.getElementById('bulkArchiveBtn').addEventListener('click', async () => {
+    const ids = [...selectedIds];
+    for (const id of ids) await send('UPDATE_JOB', { id, updates: { status: 'archived' } });
+    clearSelection();
+    showToast(`Archived ${ids.length} job${ids.length !== 1 ? 's' : ''}`, 'info');
+    await reload();
+  });
+  document.getElementById('bulkDeleteBtn').addEventListener('click', async () => {
+    const ids = [...selectedIds];
+    if (!confirm(`Delete ${ids.length} job${ids.length !== 1 ? 's' : ''}? This cannot be undone.`)) return;
+    for (const id of ids) await send('DELETE_JOB', { id });
+    clearSelection();
+    showToast(`Deleted ${ids.length} job${ids.length !== 1 ? 's' : ''}`, 'info');
+    await reload();
+  });
+  document.getElementById('bulkCancelBtn').addEventListener('click', clearSelection);
 
   // Job grid: click delegation (edit, delete, followup)
   document.getElementById('jobsGrid').addEventListener('click', e => {
@@ -842,6 +899,7 @@ function switchTab(tab) {
   document.getElementById('trackerSearch').style.display = tab === 'tracker' ? '' : 'none';
   document.getElementById('finderPanel').style.display   = tab === 'finder'  ? '' : 'none';
   document.getElementById('statsPanel').style.display    = tab === 'stats'   ? '' : 'none';
+  if (tab !== 'tracker') clearSelection();
   if (tab === 'finder') loadFinderJobs();
   if (tab === 'stats')  renderAnalytics();
 }
