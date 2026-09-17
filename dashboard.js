@@ -1289,6 +1289,13 @@ function renderAnalytics() {
   const interviewRate = total ? Math.round(interviewed / total * 100) : 0;
   const streak = calcStreak(jobs);
 
+  const earliest = jobs.reduce((min, j) => {
+    if (!j.appliedDate) return min;
+    const d = new Date(j.appliedDate);
+    return (!min || d < min) ? d : min;
+  }, null);
+  const activeDays = earliest ? Math.floor((Date.now() - earliest.getTime()) / 86400000) : 0;
+
   document.getElementById('kpiRow').innerHTML = `
     <div class="kpi-card">
       <div class="kpi-value c-blue">${total}</div>
@@ -1314,6 +1321,11 @@ function renderAnalytics() {
       <div class="kpi-value" style="color:${streak >= 7 ? '#dc2626' : streak >= 3 ? '#d97706' : '#64748b'}">${streak}${streak > 0 ? ' 🔥' : ''}</div>
       <div class="kpi-label">Day Streak</div>
       <div class="kpi-sub">${streak === 0 ? 'Apply today to start!' : streak === 1 ? 'Started — keep going!' : `${streak} days in a row`}</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-value c-gray">${activeDays}</div>
+      <div class="kpi-label">Days Searching</div>
+      <div class="kpi-sub">${earliest ? `Since ${earliest.toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'})}` : 'No applications yet'}</div>
     </div>
   `;
 
