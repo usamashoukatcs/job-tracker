@@ -355,6 +355,7 @@ function renderJobs() {
           <div class="card-meta">
             <div class="meta-item">📅 ${fmtDate(j.appliedDate)}</div>
             <div class="meta-item">${methodIcon}</div>
+            ${j.salary ? `<div class="meta-item">💰 ${j.salary}</div>` : ''}
             ${j.url ? `<div class="meta-item"><a href="${j.url}" target="_blank" style="color:#2563eb;text-decoration:none">🔗 View Job</a></div>` : ''}
           </div>
           ${(function() {
@@ -419,8 +420,9 @@ function openAddModal(prefill) {
   document.getElementById('fMethod').value     = 'online';
   document.getElementById('fDate').value       = new Date().toISOString().split('T')[0];
   document.getElementById('fInterviewDate').value = '';
-  document.getElementById('fEmail').value      = '';
-  document.getElementById('fNotes').value      = '';
+  document.getElementById('fSalary').value      = '';
+  document.getElementById('fEmail').value       = '';
+  document.getElementById('fNotes').value       = '';
   document.getElementById('addModal').style.display = 'flex';
 }
 
@@ -436,8 +438,9 @@ function editJob(id) {
   document.getElementById('fMethod').value     = j.applicationMethod || 'online';
   document.getElementById('fDate').value       = j.appliedDate ? j.appliedDate.split('T')[0] : '';
   document.getElementById('fInterviewDate').value = j.interviewDate ? j.interviewDate.split('T')[0] : '';
-  document.getElementById('fEmail').value      = j.contactEmail || '';
-  document.getElementById('fNotes').value      = j.notes || '';
+  document.getElementById('fSalary').value      = j.salary || '';
+  document.getElementById('fEmail').value       = j.contactEmail || '';
+  document.getElementById('fNotes').value       = j.notes || '';
   document.getElementById('addModal').style.display = 'flex';
 }
 
@@ -462,6 +465,7 @@ async function saveJob() {
     interviewDate: document.getElementById('fInterviewDate').value
       ? new Date(document.getElementById('fInterviewDate').value).toISOString()
       : null,
+    salary:       document.getElementById('fSalary').value.trim(),
     contactEmail: document.getElementById('fEmail').value.trim(),
     notes:        document.getElementById('fNotes').value.trim()
   };
