@@ -714,6 +714,17 @@ body {
 }
 .chart-title { font-size: 13px; font-weight: 700; color: #1e293b; margin-bottom: 16px; }
 .bar-chart { display: flex; align-items: flex-end; gap: 5px; height: 110px; }
+.heatmap-wrap { display: flex; gap: 3px; }
+.heatmap-col { display: flex; flex-direction: column; gap: 3px; }
+.heatmap-day-label { font-size: 9px; color: #94a3b8; height: 11px; line-height: 11px; text-align: right; padding-right: 4px; }
+.heatmap-cell { width: 11px; height: 11px; border-radius: 2px; background: #e2e8f0; cursor: default; position: relative; }
+.heatmap-cell[data-count="0"] { background: #e2e8f0; }
+.heatmap-cell[data-count="1"] { background: #bfdbfe; }
+.heatmap-cell[data-count="2"] { background: #60a5fa; }
+.heatmap-cell[data-count="3"] { background: #2563eb; }
+.heatmap-cell[data-count="4"] { background: #1e40af; }
+.heatmap-month-labels { display: flex; gap: 3px; margin-bottom: 4px; }
+.heatmap-month-label { font-size: 9px; color: #94a3b8; }
 .bar-col { display: flex; flex-direction: column; align-items: center; flex: 1; height: 100%; justify-content: flex-end; gap: 3px; }
 .bar-fill { width: 100%; background: #2563eb; border-radius: 4px 4px 0 0; min-height: 2px; }
 .bar-label { font-size: 9px; color: #94a3b8; text-align: center; }
@@ -906,6 +917,11 @@ body[data-theme="dark"] .kanban-empty { color: #334155; }
 body[data-theme="dark"] .kpi-card { background: #1e293b; border-color: #334155; }
 body[data-theme="dark"] .kpi-label { color: #64748b; }
 body[data-theme="dark"] .kpi-sub { color: #475569; }
+body[data-theme="dark"] .heatmap-cell[data-count="0"] { background: #1e293b; }
+body[data-theme="dark"] .heatmap-cell[data-count="1"] { background: #1e3a5f; }
+body[data-theme="dark"] .heatmap-cell[data-count="2"] { background: #1d4ed8; }
+body[data-theme="dark"] .heatmap-cell[data-count="3"] { background: #2563eb; }
+body[data-theme="dark"] .heatmap-cell[data-count="4"] { background: #60a5fa; }
 body[data-theme="dark"] .chart-card { background: #1e293b; border-color: #334155; }
 body[data-theme="dark"] .chart-title { color: #e2e8f0; }
 body[data-theme="dark"] .bar-fill { background: #3b82f6; }
@@ -1142,6 +1158,10 @@ body[data-theme="dark"] .tl-note { color: #94a3b8; }
         <div class="chart-title">How You Applied</div>
         <div id="methodChart"></div>
       </div>
+    </div>
+    <div class="chart-card" style="margin-top:16px">
+      <div class="chart-title">Application Activity — Last 16 Weeks</div>
+      <div id="heatmapChart" style="overflow-x:auto"></div>
     </div>
   </div>
 

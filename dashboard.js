@@ -1390,4 +1390,47 @@ function renderAnalytics() {
           <div class="hbar-count">${count}</div>
         </div>`;
     }).join('') || '<div style="font-size:12px;color:#94a3b8">No data yet</div>';
+
+  // Application heatmap (last 16 weeks)
+  const WEEKS = 16;
+  const DAYS  = WEEKS * 7;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const startDay = new Date(today); startDay.setDate(today.getDate() - DAYS + 1);
+
+  const countByDate = {};
+  for (const j of jobs) {
+    if (!j.appliedDate) continue;
+    const d = new Date(j.appliedDate); d.setHours(0, 0, 0, 0);
+    const key = d.toISOString().slice(0, 10);
+    countByDate[key] = (countByDate[key] || 0) + 1;
+  }
+
+  const DAY_LABELS = ['', 'M', '', 'W', '', 'F', ''];
+  const cols = [];
+  let monthLabels = [];
+  let lastMonth = -1;
+
+  for (let w = 0; w < WEEKS; w++) {
+    const cells = [];
+    for (let d = 0; d < 7; d++) {
+      const date = new Date(startDay); date.setDate(startDay.getDate() + w * 7 + d);
+      const key  = date.toISOString().slice(0, 10);
+      const cnt  = Math.min(countByDate[key] || 0, 4);
+      const title = `${key}: ${countByDate[key] || 0} application${countByDate[key] !== 1 ? 's' : ''}`;
+      cells.push(`<div class="heatmap-cell" data-count="${cnt}" title="${title}"></div>`);
+      if (d === 0 && date.getMonth() !== lastMonth) {
+        lastMonth = date.getMonth();
+        monthLabels.push({ w, label: date.toLocaleDateString('en-US', { month: 'short' }) });
+      }
+    }
+    cols.push(`<div class="heatmap-col">${cells.join('')}</div>`);
+  }
+
+  const dayAxis = `<div class="heatmap-col" style="margin-right:2px">${DAY_LABELS.map(l => `<div class="heatmap-day-label">${l}</div>`).join('')}</div>`;
+  const monthRow = `<div class="heatmap-month-labels">${
+    monthLabels.map(m => `<div class="heatmap-month-label" style="min-width:${m.w === 0 ? 0 : (m.w - (monthLabels[monthLabels.indexOf(m) - 1]?.w ?? 0)) * 14}px">${m.label}</div>`).join('')
+  }</div>`;
+
+  document.getElementById('heatmapChart').innerHTML =
+    `${monthRow}<div class="heatmap-wrap">${dayAxis}${cols.join('')}</div>`;
 }
