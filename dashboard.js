@@ -57,13 +57,21 @@ function launchConfetti() {
   }
 }
 
-function showToast(msg, type = 'info') {
+function showToast(msg, type = 'info', { label, onClick } = {}) {
   const container = document.getElementById('toast-container');
   const el = document.createElement('div');
   el.className = `toast toast-${type}`;
-  el.textContent = msg;
+  el.innerHTML = `<span>${msg}</span>`;
+  if (label && onClick) {
+    const btn = document.createElement('button');
+    btn.textContent = label;
+    btn.style.cssText = 'margin-left:10px;background:rgba(255,255,255,0.25);border:none;color:inherit;font-weight:700;cursor:pointer;padding:2px 8px;border-radius:4px;font-size:12px';
+    btn.addEventListener('click', () => { onClick(); el.remove(); });
+    el.appendChild(btn);
+  }
   container.appendChild(el);
-  setTimeout(() => el.remove(), 2900);
+  const tid = setTimeout(() => el.remove(), 4000);
+  if (label && onClick) el.addEventListener('click', () => clearTimeout(tid), { once: true });
 }
 
 function updateBulkBar() {
@@ -404,10 +412,24 @@ async function quickStatus(id, status) {
   await reload();
 }
 
-async function deleteJob(id) {
-  if (!confirm('Delete this job from your tracker?')) return;
-  await send('DELETE_JOB', { id });
-  await reload();
+function deleteJob(id) {
+  const job = allJobs.find(j => j.id === id);
+  if (!job) return;
+  // Optimistically hide the card
+  const card = document.getElementById(`card-${id}`);
+  if (card) card.style.display = 'none';
+  let undone = false;
+  const tid = setTimeout(async () => {
+    if (!undone) { await send('DELETE_JOB', { id }); await reload(); }
+  }, 4500);
+  showToast(`Deleted "${job.title} at ${job.company}"`, 'info', {
+    label: 'Undo',
+    onClick: () => {
+      undone = true;
+      clearTimeout(tid);
+      if (card) card.style.display = '';
+    }
+  });
 }
 
 function openAddModal(prefill) {
