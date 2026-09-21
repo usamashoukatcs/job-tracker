@@ -194,6 +194,7 @@ function getFiltered() {
     case 'date-asc':  jobs.sort((a, b) => new Date(a.appliedDate) - new Date(b.appliedDate)); break;
     case 'company':   jobs.sort((a, b) => (a.company || '').localeCompare(b.company || '')); break;
     case 'status':    jobs.sort((a, b) => (STATUS_ORDER[a.status] ?? 9) - (STATUS_ORDER[b.status] ?? 9)); break;
+    case 'priority':  jobs.sort((a, b) => (b.priority || 0) - (a.priority || 0)); break;
     default:          jobs.sort((a, b) => new Date(b.appliedDate) - new Date(a.appliedDate)); break;
   }
   return jobs;
@@ -353,6 +354,7 @@ function renderJobs() {
           <div class="card-main">
             <div class="card-title">${j.title}</div>
             <div class="card-company">${j.company}</div>
+            <div class="priority-stars" data-job-id="${j.id}">${[1,2,3].map(n => `<span class="pstar${(j.priority||0) >= n ? ' pstar-on' : ''}" data-star="${n}" title="${n === 1 ? 'Low' : n === 2 ? 'Medium' : 'High'} priority">★</span>`).join('')}</div>
           </div>
           <div class="card-badge">
             <span class="badge ${STATUS_BADGE[j.status] || 'badge-applied'}">${j.status}</span>
@@ -615,8 +617,23 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   document.getElementById('bulkCancelBtn').addEventListener('click', clearSelection);
 
+  // Priority stars
+  document.getElementById('jobsGrid').addEventListener('click', async e => {
+    const star = e.target.closest('.pstar');
+    if (!star) return;
+    const wrap  = star.closest('.priority-stars');
+    const jobId = wrap?.dataset.jobId;
+    if (!jobId) return;
+    const n = parseInt(star.dataset.star, 10);
+    const job = allJobs.find(j => j.id === jobId);
+    const newPriority = job && job.priority === n ? 0 : n; // click same star to clear
+    await send('UPDATE_JOB', { id: jobId, updates: { priority: newPriority } });
+    await reload();
+  });
+
   // Job grid: click delegation (edit, delete, followup)
   document.getElementById('jobsGrid').addEventListener('click', e => {
+    if (e.target.closest('.pstar')) return; // handled above
     const btn   = e.target.closest('[data-action]');
     if (!btn) return;
     const action = btn.dataset.action;

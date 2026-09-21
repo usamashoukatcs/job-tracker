@@ -205,6 +205,11 @@ body {
   text-overflow: ellipsis;
 }
 .card-company { font-size: 12px; color: #64748b; margin-top: 2px; }
+.priority-stars { display: flex; gap: 2px; margin-top: 4px; }
+.pstar { font-size: 14px; color: #cbd5e1; cursor: pointer; line-height: 1; transition: color 0.1s; user-select: none; }
+.pstar:hover, .pstar-on { color: #f59e0b; }
+.priority-stars:hover .pstar { color: #fbbf24; }
+.priority-stars:hover .pstar ~ .pstar { color: #cbd5e1; }
 .card-badge { flex-shrink: 0; }
 
 .badge {
@@ -826,6 +831,10 @@ body[data-theme="dark"] .job-card {
 body[data-theme="dark"] .job-card:hover { border-color: #475569; box-shadow: 0 4px 16px rgba(0,0,0,.4); }
 body[data-theme="dark"] .card-title { color: #f1f5f9; }
 body[data-theme="dark"] .card-company { color: #94a3b8; }
+body[data-theme="dark"] .pstar { color: #475569; }
+body[data-theme="dark"] .pstar:hover, body[data-theme="dark"] .pstar-on { color: #fbbf24; }
+body[data-theme="dark"] .priority-stars:hover .pstar { color: #fbbf24; }
+body[data-theme="dark"] .priority-stars:hover .pstar ~ .pstar { color: #475569; }
 body[data-theme="dark"] .card-meta { color: #64748b; }
 body[data-theme="dark"] .card-avatar { background: #1e3a8a; color: #93c5fd; }
 body[data-theme="dark"] .card-notes { background: #0f172a; color: #94a3b8; }
@@ -1037,6 +1046,7 @@ body[data-theme="dark"] .tl-note { color: #94a3b8; }
         <option value="date-asc">Oldest first</option>
         <option value="company">Company A–Z</option>
         <option value="status">By status</option>
+        <option value="priority">By priority ★</option>
       </select>
     </div>
   </div>
