@@ -499,6 +499,14 @@ async function saveJob() {
     if (existing && existing.status !== data.status) data.statusUpdated = new Date().toISOString();
     await send('UPDATE_JOB', { id, updates: data });
   } else {
+    const norm = s => s.toLowerCase().replace(/\s+/g, ' ').trim();
+    const dupe = allJobs.find(j =>
+      norm(j.company) === norm(data.company) && norm(j.title) === norm(data.title)
+    );
+    if (dupe) {
+      const go = confirm(`You already have "${dupe.title} at ${dupe.company}" (${dupe.status}). Add anyway?`);
+      if (!go) return;
+    }
     data.statusUpdated = new Date().toISOString();
     await send('ADD_JOB', { job: data });
   }
