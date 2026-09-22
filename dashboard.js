@@ -380,6 +380,10 @@ function renderJobs() {
           ${followupDue ? `<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:7px 10px;font-size:12px;color:#92400e;margin-bottom:10px">⏰ Follow-up overdue — ${daysAgo} days with no response</div>` : ''}
           ${j.notes ? `<div class="card-notes">${j.notes}</div>` : ''}
           ${events.length > 0 ? `<div class="timeline"><div class="timeline-title">History</div>${timeline}</div>` : ''}
+          <div class="quick-note-row">
+            <input class="quick-note-input" data-job-id="${j.id}" placeholder="+ Quick note…" type="text" maxlength="200">
+            <button class="quick-note-submit" data-job-id="${j.id}" title="Save note">✓</button>
+          </div>
         </div>
 
         <div class="card-actions">
@@ -411,6 +415,16 @@ async function quickStatus(id, status) {
     launchConfetti();
     showToast('🎉 Congratulations on the offer!', 'success');
   }
+  await reload();
+}
+
+async function submitQuickNote(jobId, input) {
+  if (!input) return;
+  const note = input.value.trim();
+  if (!note) return;
+  await send('UPDATE_JOB', { id: jobId, updates: { _note: note, status: allJobs.find(j => j.id === jobId)?.status } });
+  input.value = '';
+  showToast('Note saved', 'success');
   await reload();
 }
 
@@ -639,9 +653,28 @@ document.addEventListener('DOMContentLoaded', () => {
     await reload();
   });
 
+  // Quick inline note: submit on ✓ click
+  document.getElementById('jobsGrid').addEventListener('click', async e => {
+    const btn = e.target.closest('.quick-note-submit');
+    if (!btn) return;
+    const jobId = btn.dataset.jobId;
+    const input = document.querySelector(`.quick-note-input[data-job-id="${jobId}"]`);
+    await submitQuickNote(jobId, input);
+  });
+
+  // Quick inline note: submit on Enter
+  document.getElementById('jobsGrid').addEventListener('keydown', async e => {
+    if (e.key !== 'Enter') return;
+    const input = e.target.closest('.quick-note-input');
+    if (!input) return;
+    e.preventDefault();
+    await submitQuickNote(input.dataset.jobId, input);
+  });
+
   // Job grid: click delegation (edit, delete, followup)
   document.getElementById('jobsGrid').addEventListener('click', e => {
     if (e.target.closest('.pstar')) return; // handled above
+    if (e.target.closest('.quick-note-submit')) return; // handled above
     const btn   = e.target.closest('[data-action]');
     if (!btn) return;
     const action = btn.dataset.action;

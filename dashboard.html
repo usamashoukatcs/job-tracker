@@ -276,6 +276,11 @@ body {
 .card-btn.danger:hover { border-color: #fca5a5; color: #dc2626; background: #fff1f2; }
 
 /* Timeline */
+.quick-note-row { display: flex; gap: 6px; padding: 8px 16px 12px; }
+.quick-note-input { flex: 1; font-size: 12px; border: 1px solid #e2e8f0; border-radius: 6px; padding: 5px 9px; color: #334155; background: #f8fafc; outline: none; }
+.quick-note-input:focus { border-color: #2563eb; background: #fff; }
+.quick-note-submit { background: #2563eb; color: #fff; border: none; border-radius: 6px; padding: 5px 10px; font-size: 12px; cursor: pointer; font-weight: 700; }
+.quick-note-submit:hover { background: #1d4ed8; }
 .timeline { padding: 0 16px 12px; }
 .timeline-title {
   font-size: 11px;
@@ -955,6 +960,8 @@ body[data-theme="dark"] #goalInput { background: #0f172a; border-color: #334155;
 body[data-theme="dark"] .empty-state .es-text { color: #94a3b8; }
 body[data-theme="dark"] .empty-state .es-sub { color: #64748b; }
 body[data-theme="dark"] .timeline-title { color: #64748b; }
+body[data-theme="dark"] .quick-note-input { background: #0f172a; border-color: #334155; color: #e2e8f0; }
+body[data-theme="dark"] .quick-note-input:focus { border-color: #3b82f6; background: #1e293b; }
 body[data-theme="dark"] .tl-date { color: #64748b; }
 body[data-theme="dark"] .tl-note { color: #94a3b8; }
 </style>
