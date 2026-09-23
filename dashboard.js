@@ -638,6 +638,16 @@ document.addEventListener('DOMContentLoaded', () => {
     await reload();
   });
   document.getElementById('bulkCancelBtn').addEventListener('click', clearSelection);
+  document.getElementById('bulkStatusSelect').addEventListener('change', async e => {
+    const status = e.target.value;
+    if (!status) return;
+    e.target.value = '';
+    const ids = [...selectedIds];
+    for (const id of ids) await send('UPDATE_JOB', { id, updates: { status, statusUpdated: new Date().toISOString() } });
+    clearSelection();
+    showToast(`Marked ${ids.length} job${ids.length !== 1 ? 's' : ''} as "${status}"`, 'info');
+    await reload();
+  });
 
   // Priority stars
   document.getElementById('jobsGrid').addEventListener('click', async e => {

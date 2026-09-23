@@ -1283,6 +1283,14 @@ body[data-theme="dark"] .tl-note { color: #94a3b8; }
 <div id="toast-container"></div>
 <div id="bulkBar" style="display:none">
   <span id="bulkCount">0 selected</span>
+  <select id="bulkStatusSelect" class="bulk-btn" style="cursor:pointer">
+    <option value="">Set status…</option>
+    <option value="applied">Applied</option>
+    <option value="interview">Interview</option>
+    <option value="offer">Offer</option>
+    <option value="rejected">Rejected</option>
+    <option value="ghosted">Ghosted</option>
+  </select>
   <button class="bulk-btn bulk-btn-archive" id="bulkArchiveBtn">Archive</button>
   <button class="bulk-btn bulk-btn-danger"  id="bulkDeleteBtn">Delete</button>
   <button class="bulk-btn bulk-btn-ghost"   id="bulkCancelBtn">Cancel</button>
