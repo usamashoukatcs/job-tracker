@@ -933,7 +933,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName)) return;
     // Ignore when a modal is open
     const modalOpen = document.getElementById('addModal').style.display !== 'none'
-      || document.getElementById('followupModal').style.display !== 'none';
+      || document.getElementById('followupModal').style.display !== 'none'
+      || document.getElementById('shortcutsModal').style.display !== 'none';
 
     switch (e.key) {
       case '1': switchTab('tracker'); break;
@@ -948,11 +949,22 @@ document.addEventListener('DOMContentLoaded', () => {
           else           document.getElementById('searchInput')?.focus();
         }
         break;
+      case '?':
+        document.getElementById('shortcutsModal').style.display = 'flex';
+        break;
       case 'Escape':
         closeModal();
         closeFollowupModal();
+        document.getElementById('shortcutsModal').style.display = 'none';
         break;
     }
+  });
+
+  document.getElementById('closeShortcutsBtn').addEventListener('click', () => {
+    document.getElementById('shortcutsModal').style.display = 'none';
+  });
+  document.getElementById('shortcutsModal').addEventListener('click', e => {
+    if (e.target === e.currentTarget) e.currentTarget.style.display = 'none';
   });
 
   reload();
