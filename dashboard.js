@@ -1408,6 +1408,19 @@ function renderAnalytics() {
   }, null);
   const activeDays = earliest ? Math.floor((Date.now() - earliest.getTime()) / 86400000) : 0;
 
+  // Average response time: days from appliedDate to first status-change event (interview/rejected/offer)
+  const responseTimes = jobs
+    .filter(j => j.appliedDate && j.events && j.events.length)
+    .map(j => {
+      const firstResponse = j.events.find(e => ['interview','offer','rejected'].includes(e.type));
+      if (!firstResponse) return null;
+      return Math.max(0, Math.round((new Date(firstResponse.date) - new Date(j.appliedDate)) / 86400000));
+    })
+    .filter(v => v !== null);
+  const avgResponse = responseTimes.length
+    ? Math.round(responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length)
+    : null;
+
   document.getElementById('kpiRow').innerHTML = `
     <div class="kpi-card">
       <div class="kpi-value c-blue">${total}</div>
@@ -1438,6 +1451,11 @@ function renderAnalytics() {
       <div class="kpi-value c-gray">${activeDays}</div>
       <div class="kpi-label">Days Searching</div>
       <div class="kpi-sub">${earliest ? `Since ${earliest.toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'})}` : 'No applications yet'}</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-value ${avgResponse === null ? 'c-gray' : avgResponse <= 7 ? 'c-green' : avgResponse <= 14 ? 'c-yellow' : 'c-red'}">${avgResponse === null ? '—' : avgResponse + 'd'}</div>
+      <div class="kpi-label">Avg Response</div>
+      <div class="kpi-sub">${avgResponse === null ? 'No responses yet' : `across ${responseTimes.length} response${responseTimes.length !== 1 ? 's' : ''}`}</div>
     </div>
   `;
 
