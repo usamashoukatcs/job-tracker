@@ -1024,6 +1024,10 @@ body[data-theme="dark"] .tl-note { color: #94a3b8; }
       <div class="stat-num" style="color:#7c3aed" id="sToday">0</div>
       <div class="stat-label">Today</div>
     </div>
+    <div class="stat-card" data-filter="archived">
+      <div class="stat-num c-gray" id="sArchived">0</div>
+      <div class="stat-label">Archived</div>
+    </div>
   </div>
 
   <!-- Follow-up section (only shown when there are overdue) -->
@@ -1047,6 +1051,7 @@ body[data-theme="dark"] .tl-note { color: #94a3b8; }
     <div class="filter-tab" data-filter="rejected">Rejected</div>
     <div class="filter-tab" data-filter="ghosted">Ghosted</div>
     <div class="filter-tab" data-filter="email">📧 Email Apps</div>
+    <div class="filter-tab" data-filter="archived">🗄 Archived</div>
     <div class="view-toggle">
       <button class="view-btn active" id="viewList">☰ List</button>
       <button class="view-btn" id="viewKanban">⬜ Board</button>

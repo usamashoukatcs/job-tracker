@@ -177,9 +177,12 @@ function setFilter(f, clickedEl) {
 
 function getFiltered() {
   let jobs = [...allJobs];
-  if (currentFilter !== 'all') {
-    if (currentFilter === 'email') jobs = jobs.filter(j => j.applicationMethod === 'email');
-    else jobs = jobs.filter(j => j.status === currentFilter);
+  if (currentFilter === 'all') {
+    jobs = jobs.filter(j => j.status !== 'archived'); // archive view is separate
+  } else if (currentFilter === 'email') {
+    jobs = jobs.filter(j => j.applicationMethod === 'email' && j.status !== 'archived');
+  } else {
+    jobs = jobs.filter(j => j.status === currentFilter);
   }
   if (currentSearch) {
     const q = currentSearch.toLowerCase();
@@ -203,12 +206,13 @@ function getFiltered() {
 // ── Render ───────────────────────────────────────────────────────────────────
 
 function renderStats() {
-  document.getElementById('sAll').textContent       = allJobs.length;
+  document.getElementById('sAll').textContent       = allJobs.filter(j => j.status !== 'archived').length;
   document.getElementById('sApplied').textContent   = allJobs.filter(j => j.status === 'applied').length;
   document.getElementById('sInterview').textContent = allJobs.filter(j => j.status === 'interview').length;
   document.getElementById('sOffer').textContent     = allJobs.filter(j => j.status === 'offer').length;
   document.getElementById('sRejected').textContent  = allJobs.filter(j => j.status === 'rejected').length;
   document.getElementById('sGhosted').textContent   = allJobs.filter(j => j.status === 'ghosted').length;
+  document.getElementById('sArchived').textContent  = allJobs.filter(j => j.status === 'archived').length;
 
   const todayStr = new Date().toLocaleDateString('en-CA');
   const todayCount = allJobs.filter(j =>
