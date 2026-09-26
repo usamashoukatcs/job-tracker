@@ -252,6 +252,12 @@ body {
   overflow: hidden;
 }
 
+.card-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; padding: 0 16px; }
+.card-tag { font-size: 10px; font-weight: 600; background: #ede9fe; color: #6d28d9; border-radius: 10px; padding: 2px 8px; cursor: pointer; }
+.card-tag:hover { background: #ddd6fe; }
+.card-prep { font-size: 12px; color: #7c3aed; background: #faf5ff; border-left: 3px solid #a78bfa; border-radius: 0 6px 6px 0; padding: 8px 10px; margin-bottom: 10px; white-space: pre-wrap; }
+.card-prep-toggle { font-size: 11px; color: #7c3aed; cursor: pointer; padding: 0 16px 8px; display: block; font-weight: 600; }
+.card-prep-toggle:hover { text-decoration: underline; }
 .card-actions {
   display: flex;
   gap: 6px;
@@ -844,6 +850,10 @@ body[data-theme="dark"] .priority-stars:hover .pstar ~ .pstar { color: #475569; 
 body[data-theme="dark"] .card-meta { color: #64748b; }
 body[data-theme="dark"] .card-avatar { background: #1e3a8a; color: #93c5fd; }
 body[data-theme="dark"] .card-notes { background: #0f172a; color: #94a3b8; }
+body[data-theme="dark"] .card-tag { background: #2e1065; color: #c4b5fd; }
+body[data-theme="dark"] .card-tag:hover { background: #3b0764; }
+body[data-theme="dark"] .card-prep { background: #1a0533; color: #c4b5fd; border-left-color: #7c3aed; }
+body[data-theme="dark"] .card-prep-toggle { color: #a78bfa; }
 body[data-theme="dark"] .card-actions { background: #162032; border-color: #334155; }
 body[data-theme="dark"] .card-btn {
   background: #1e293b;
@@ -1253,8 +1263,16 @@ body[data-theme="dark"] .tl-note { color: #94a3b8; }
         <input id="fEmail" type="email" placeholder="recruiter@company.com">
       </div>
       <div class="form-group">
+        <label>Tags <span style="font-weight:400;color:#94a3b8">(comma-separated, e.g. remote, fintech)</span></label>
+        <input id="fTags" placeholder="remote, startup, golang">
+      </div>
+      <div class="form-group">
         <label>Notes</label>
         <textarea id="fNotes" placeholder="Anything worth remembering about this role…"></textarea>
+      </div>
+      <div class="form-group">
+        <label>Interview Prep <span style="font-weight:400;color:#94a3b8">(questions to ask, things to research)</span></label>
+        <textarea id="fPrep" placeholder="Research their Go stack… Ask about team size… Review system design…" style="min-height:80px"></textarea>
       </div>
       <div class="modal-footer">
         <button class="btn btn-ghost" id="cancelModalBtn">Cancel</button>

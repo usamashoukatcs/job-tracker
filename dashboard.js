@@ -8,6 +8,7 @@ let allJobs = [];
 let settings = {};
 let currentFilter = 'all';
 let currentSearch = '';
+let currentTagFilter = '';
 let followupJobId = null;
 let viewMode = 'list';
 let trackerSort = 'date-desc';
@@ -169,6 +170,7 @@ function send(type, extra = {}) {
 
 function setFilter(f, clickedEl) {
   currentFilter = f;
+  currentTagFilter = '';
   document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.stat-card').forEach(t => t.classList.remove('active'));
   if (clickedEl) clickedEl.classList.add('active');
@@ -191,6 +193,9 @@ function getFiltered() {
       j.company.toLowerCase().includes(q) ||
       (j.notes || '').toLowerCase().includes(q)
     );
+  }
+  if (currentTagFilter) {
+    jobs = jobs.filter(j => (j.tags || []).includes(currentTagFilter));
   }
   const STATUS_ORDER = { offer: 0, interview: 1, applied: 2, ghosted: 3, rejected: 4, archived: 5 };
   switch (trackerSort) {
@@ -372,6 +377,7 @@ function renderJobs() {
             ${j.salary ? `<div class="meta-item">💰 ${j.salary}</div>` : ''}
             ${j.url ? `<div class="meta-item"><a href="${j.url}" target="_blank" style="color:#2563eb;text-decoration:none">🔗 View Job</a></div>` : ''}
           </div>
+          ${j.tags && j.tags.length ? `<div class="card-tags">${j.tags.map(t => `<span class="card-tag" data-tag="${t}">#${t}</span>`).join('')}</div>` : ''}
           ${(function() {
             if (!j.interviewDate) return '';
             const diff = Math.round((new Date(j.interviewDate) - Date.now()) / 86400000);
@@ -383,6 +389,9 @@ function renderJobs() {
           })()}
           ${followupDue ? `<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:7px 10px;font-size:12px;color:#92400e;margin-bottom:10px">⏰ Follow-up overdue — ${daysAgo} days with no response</div>` : ''}
           ${j.notes ? `<div class="card-notes">${j.notes}</div>` : ''}
+          ${j.prepNotes ? `
+            <span class="card-prep-toggle" data-prep-id="${j.id}">📋 Interview Prep ▾</span>
+            <div class="card-prep" id="prep-${j.id}" style="display:none;margin:0 16px 10px">${j.prepNotes.replace(/\n/g,'<br>')}</div>` : ''}
           ${events.length > 0 ? `<div class="timeline"><div class="timeline-title">History</div>${timeline}</div>` : ''}
           <div class="quick-note-row">
             <input class="quick-note-input" data-job-id="${j.id}" placeholder="+ Quick note…" type="text" maxlength="200">
@@ -463,8 +472,10 @@ function openAddModal(prefill) {
   document.getElementById('fDate').value       = new Date().toISOString().split('T')[0];
   document.getElementById('fInterviewDate').value = '';
   document.getElementById('fSalary').value      = '';
+  document.getElementById('fTags').value        = '';
   document.getElementById('fEmail').value       = '';
   document.getElementById('fNotes').value       = '';
+  document.getElementById('fPrep').value        = '';
   document.getElementById('addModal').style.display = 'flex';
 }
 
@@ -481,8 +492,10 @@ function editJob(id) {
   document.getElementById('fDate').value       = j.appliedDate ? j.appliedDate.split('T')[0] : '';
   document.getElementById('fInterviewDate').value = j.interviewDate ? j.interviewDate.split('T')[0] : '';
   document.getElementById('fSalary').value      = j.salary || '';
+  document.getElementById('fTags').value        = (j.tags || []).join(', ');
   document.getElementById('fEmail').value       = j.contactEmail || '';
   document.getElementById('fNotes').value       = j.notes || '';
+  document.getElementById('fPrep').value        = j.prepNotes || '';
   document.getElementById('addModal').style.display = 'flex';
 }
 
@@ -508,8 +521,10 @@ async function saveJob() {
       ? new Date(document.getElementById('fInterviewDate').value).toISOString()
       : null,
     salary:       document.getElementById('fSalary').value.trim(),
+    tags:         document.getElementById('fTags').value.split(',').map(t => t.trim().toLowerCase()).filter(Boolean),
     contactEmail: document.getElementById('fEmail').value.trim(),
-    notes:        document.getElementById('fNotes').value.trim()
+    notes:        document.getElementById('fNotes').value.trim(),
+    prepNotes:    document.getElementById('fPrep').value.trim()
   };
 
   if (id) {
@@ -653,6 +668,27 @@ document.addEventListener('DOMContentLoaded', () => {
     await reload();
   });
 
+  // Prep toggle
+  document.getElementById('jobsGrid').addEventListener('click', e => {
+    const toggle = e.target.closest('.card-prep-toggle');
+    if (!toggle) return;
+    const id = toggle.dataset.prepId;
+    const panel = document.getElementById(`prep-${id}`);
+    if (!panel) return;
+    const open = panel.style.display !== 'none';
+    panel.style.display = open ? 'none' : 'block';
+    toggle.textContent = toggle.textContent.replace(open ? '▴' : '▾', open ? '▾' : '▴');
+  });
+
+  // Tag filter click
+  document.getElementById('jobsGrid').addEventListener('click', e => {
+    const tag = e.target.closest('.card-tag');
+    if (!tag) return;
+    const t = tag.dataset.tag;
+    currentTagFilter = currentTagFilter === t ? '' : t;
+    renderJobs();
+  });
+
   // Priority stars
   document.getElementById('jobsGrid').addEventListener('click', async e => {
     const star = e.target.closest('.pstar');
@@ -687,8 +723,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Job grid: click delegation (edit, delete, followup)
   document.getElementById('jobsGrid').addEventListener('click', e => {
-    if (e.target.closest('.pstar')) return; // handled above
-    if (e.target.closest('.quick-note-submit')) return; // handled above
+    if (e.target.closest('.pstar')) return;
+    if (e.target.closest('.quick-note-submit')) return;
+    if (e.target.closest('.card-prep-toggle')) return;
+    if (e.target.closest('.card-tag')) return;
     const btn   = e.target.closest('[data-action]');
     if (!btn) return;
     const action = btn.dataset.action;
