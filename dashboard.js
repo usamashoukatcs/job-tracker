@@ -362,7 +362,30 @@ function setViewMode(mode) {
   if (mode === 'kanban') renderKanban(); else renderJobs();
 }
 
+function renderOfferCompare() {
+  const el = document.getElementById('offerCompare');
+  const offers = allJobs.filter(j => j.status === 'offer');
+  if (offers.length < 2) { el.style.display = 'none'; return; }
+  el.style.display = 'block';
+  el.innerHTML = `
+    <div class="offer-compare-wrap">
+      <div class="offer-compare-title">🎉 You have ${offers.length} offers — compare them:</div>
+      <div class="offer-cards">
+        ${offers.map(j => `
+          <div class="offer-card">
+            <div class="offer-card-company">${j.company}</div>
+            <div class="offer-card-title">${j.title}</div>
+            ${j.salary ? `<div class="offer-card-row">💰 ${j.salary}</div>` : ''}
+            ${j.applicationMethod ? `<div class="offer-card-row">📬 ${j.applicationMethod}</div>` : ''}
+            ${j.tags && j.tags.length ? `<div class="offer-card-row">🏷 ${j.tags.map(t => '#' + t).join(' ')}</div>` : ''}
+            ${j.notes ? `<div class="offer-card-row" style="color:#64748b;font-style:italic">${j.notes.slice(0, 80)}${j.notes.length > 80 ? '…' : ''}</div>` : ''}
+          </div>`).join('')}
+      </div>
+    </div>`;
+}
+
 function renderJobs() {
+  renderOfferCompare();
   const jobs = getFiltered();
   const grid = document.getElementById('jobsGrid');
 
