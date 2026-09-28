@@ -111,6 +111,47 @@ function toggleDarkMode() {
   document.getElementById('darkModeBtn').textContent = next === 'dark' ? '☀️' : '🌙';
 }
 
+function parseCsvLine(line) {
+  const result = [];
+  let cur = '', inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (c === '"') {
+      if (inQ && line[i + 1] === '"') { cur += '"'; i++; }
+      else inQ = !inQ;
+    } else if (c === ',' && !inQ) { result.push(cur); cur = ''; }
+    else cur += c;
+  }
+  result.push(cur);
+  return result;
+}
+
+function parseCsvToJobs(text) {
+  const lines = text.trim().split(/\r?\n/).filter(Boolean);
+  if (lines.length < 2) return [];
+  const headers = parseCsvLine(lines[0]).map(h => h.trim().toLowerCase());
+  const col = k => headers.indexOf(k);
+  return lines.slice(1).map(line => {
+    const vals = parseCsvLine(line);
+    const get  = k => (vals[col(k)] || '').trim();
+    const title   = get('title');
+    const company = get('company');
+    if (!title || !company) return null;
+    const rawDate = get('applied date') || get('applieddate') || get('date');
+    const appliedDate = rawDate ? new Date(rawDate).toISOString() : new Date().toISOString();
+    return {
+      title, company,
+      status:            get('status') || 'applied',
+      applicationMethod: get('method') || 'online',
+      url:               get('url') || '',
+      notes:             get('notes') || '',
+      appliedDate,
+      statusUpdated:     new Date().toISOString(),
+      events: [{ date: appliedDate, type: 'applied', note: 'Imported' }],
+    };
+  }).filter(Boolean);
+}
+
 function exportCsv() {
   if (!allJobs.length) { showToast('No jobs to export yet.', 'error'); return; }
   const headers = ['Title', 'Company', 'Status', 'Applied Date', 'Method', 'URL', 'Notes'];
@@ -614,6 +655,43 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('darkModeBtn').textContent = savedTheme === 'dark' ? '☀️' : '🌙';
   document.getElementById('darkModeBtn').addEventListener('click', toggleDarkMode);
   document.getElementById('exportCsvBtn').addEventListener('click', exportCsv);
+
+  // Import CSV
+  document.getElementById('importCsvBtn').addEventListener('click', () => {
+    document.getElementById('importCsvText').value = '';
+    document.getElementById('importPreview').textContent = '';
+    document.getElementById('importModal').style.display = 'flex';
+  });
+  const closeImport = () => { document.getElementById('importModal').style.display = 'none'; };
+  document.getElementById('closeImportBtn').addEventListener('click', closeImport);
+  document.getElementById('cancelImportBtn').addEventListener('click', closeImport);
+  document.getElementById('importModal').addEventListener('click', e => { if (e.target === e.currentTarget) closeImport(); });
+  document.getElementById('importFile').addEventListener('change', e => {
+    const file = e.target.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      document.getElementById('importCsvText').value = ev.target.result;
+      const jobs = parseCsvToJobs(ev.target.result);
+      document.getElementById('importPreview').textContent = `Found ${jobs.length} valid row${jobs.length !== 1 ? 's' : ''} to import.`;
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  });
+  document.getElementById('importCsvText').addEventListener('input', e => {
+    const jobs = parseCsvToJobs(e.target.value);
+    document.getElementById('importPreview').textContent = jobs.length
+      ? `Found ${jobs.length} valid row${jobs.length !== 1 ? 's' : ''} to import.`
+      : '';
+  });
+  document.getElementById('confirmImportBtn').addEventListener('click', async () => {
+    const text = document.getElementById('importCsvText').value;
+    const jobs = parseCsvToJobs(text);
+    if (!jobs.length) { showToast('No valid rows found. Check the format.', 'error'); return; }
+    for (const job of jobs) await send('ADD_JOB', { job });
+    closeImport();
+    showToast(`Imported ${jobs.length} job${jobs.length !== 1 ? 's' : ''}`, 'success');
+    await reload();
+  });
 
   // Topbar buttons
   document.getElementById('settingsNavBtn').addEventListener('click', () => {
