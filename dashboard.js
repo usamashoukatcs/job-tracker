@@ -1497,19 +1497,30 @@ function renderGoal() {
   const input = document.getElementById('goalInput');
   if (input) input.value = goal;
 
-  // Count applications this current week (Sun–Sat)
+  // Count applications this current week (Sun–Sat) and last week
   const now = new Date();
   const weekStart = new Date(now);
   weekStart.setDate(now.getDate() - now.getDay());
   weekStart.setHours(0, 0, 0, 0);
+  const lastWeekStart = new Date(weekStart); lastWeekStart.setDate(weekStart.getDate() - 7);
   const thisWeek = allJobs.filter(j => j.appliedDate && new Date(j.appliedDate) >= weekStart).length;
+  const lastWeek = allJobs.filter(j => {
+    if (!j.appliedDate) return false;
+    const d = new Date(j.appliedDate);
+    return d >= lastWeekStart && d < weekStart;
+  }).length;
+  const diff = thisWeek - lastWeek;
+  const trend = lastWeek === 0 ? '' : diff > 0 ? ` ↑${diff}` : diff < 0 ? ` ↓${Math.abs(diff)}` : ' →';
+  const trendColor = diff > 0 ? '#16a34a' : diff < 0 ? '#dc2626' : '#64748b';
 
   const pct = Math.min(100, Math.round(thisWeek / goal * 100));
   const bar = document.getElementById('goalBar');
   const label = document.getElementById('goalLabel');
-  if (bar)   bar.style.width = pct + '%';
-  if (bar)   bar.style.background = pct >= 100 ? '#16a34a' : pct >= 60 ? '#2563eb' : '#f97316';
-  if (label) label.textContent = `${thisWeek} / ${goal} this week${pct >= 100 ? ' 🎉' : ''}`;
+  const trendEl = document.getElementById('goalTrend');
+  if (bar)     bar.style.width = pct + '%';
+  if (bar)     bar.style.background = pct >= 100 ? '#16a34a' : pct >= 60 ? '#2563eb' : '#f97316';
+  if (label)   label.textContent = `${thisWeek} / ${goal} this week${pct >= 100 ? ' 🎉' : ''}`;
+  if (trendEl) { trendEl.textContent = trend; trendEl.style.color = trendColor; }
 }
 
 function calcStreak(jobs) {
