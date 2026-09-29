@@ -474,6 +474,7 @@ function renderJobs() {
             <option value="ghosted">Ghosted</option>
             <option value="archived">Archived</option>
           </select>
+          ${['interview','offer'].includes(j.status) ? `<button class="card-btn" data-action="add-round" data-job-id="${j.id}" title="Log an interview round">🎙 Round</button>` : ''}
           ${j.applicationMethod === 'email' ? `<button class="card-btn" data-action="followup" data-job-id="${j.id}">📧 Follow-up</button>` : ''}
           <a class="card-btn" href="https://www.glassdoor.com/Search/results.htm?keyword=${encodeURIComponent(j.company)}" target="_blank" title="Glassdoor reviews" style="text-decoration:none;display:flex;align-items:center;justify-content:center">🌟</a>
           <a class="card-btn" href="https://www.linkedin.com/search/results/companies/?keywords=${encodeURIComponent(j.company)}" target="_blank" title="LinkedIn company" style="text-decoration:none;display:flex;align-items:center;justify-content:center">🔗</a>
@@ -565,6 +566,14 @@ function editJob(id) {
 
 function closeModal() {
   document.getElementById('addModal').style.display = 'none';
+}
+
+function openRoundModal(jobId) {
+  document.getElementById('roundJobId').value = jobId;
+  document.getElementById('roundType').value  = 'Phone Screen';
+  document.getElementById('roundDate').value  = new Date().toISOString().split('T')[0];
+  document.getElementById('roundNote').value  = '';
+  document.getElementById('roundModal').style.display = 'flex';
 }
 
 async function saveJob() {
@@ -832,9 +841,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!btn) return;
     const action = btn.dataset.action;
     const jobId  = btn.dataset.jobId || btn.closest('[data-job-id]')?.dataset.jobId;
-    if (action === 'edit')     editJob(jobId);
-    if (action === 'delete')   deleteJob(jobId);
-    if (action === 'followup') openFollowupModal(jobId);
+    if (action === 'edit')      editJob(jobId);
+    if (action === 'delete')    deleteJob(jobId);
+    if (action === 'followup')  openFollowupModal(jobId);
+    if (action === 'add-round') openRoundModal(jobId);
     if (action === 'copy') {
       const job = allJobs.find(j => j.id === jobId);
       if (job) {
@@ -1108,6 +1118,36 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   document.getElementById('shortcutsModal').addEventListener('click', e => {
     if (e.target === e.currentTarget) e.currentTarget.style.display = 'none';
+  });
+
+  // Interview round modal
+  const closeRound = () => { document.getElementById('roundModal').style.display = 'none'; };
+  document.getElementById('closeRoundBtn').addEventListener('click', closeRound);
+  document.getElementById('cancelRoundBtn').addEventListener('click', closeRound);
+  document.getElementById('roundModal').addEventListener('click', e => { if (e.target === e.currentTarget) closeRound(); });
+  document.getElementById('saveRoundBtn').addEventListener('click', async () => {
+    const jobId = document.getElementById('roundJobId').value;
+    const type  = document.getElementById('roundType').value;
+    const date  = document.getElementById('roundDate').value;
+    const note  = document.getElementById('roundNote').value.trim();
+    if (!date) { showToast('Please pick a date.', 'error'); return; }
+    const eventDate = new Date(date).toISOString();
+    const label = note ? `${type}: ${note}` : type;
+    await send('UPDATE_JOB', { id: jobId, updates: { _note: label, status: allJobs.find(j => j.id === jobId)?.status } });
+    // Patch the event type to 'round' so it gets the purple dot
+    const jobs = await send('GET_JOBS', {});
+    const job = jobs && jobs.find ? jobs.find(j => j.id === jobId) : null;
+    if (job && job.events) {
+      const last = job.events[job.events.length - 1];
+      if (last && last.note === label) {
+        last.type = 'round';
+        last.date = eventDate;
+        await send('UPDATE_JOB', { id: jobId, updates: { events: job.events } });
+      }
+    }
+    closeRound();
+    showToast(`Round logged: ${type}`, 'success');
+    await reload();
   });
 
   reload();

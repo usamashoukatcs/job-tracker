@@ -316,6 +316,7 @@ body {
 .tl-dot.rejected { background: #dc2626; }
 .tl-dot.offer { background: #d97706; }
 .tl-dot.ghosted { background: #94a3b8; }
+.tl-dot.round { background: #7c3aed; }
 .tl-date { color: #94a3b8; min-width: 60px; }
 .tl-note { color: #475569; }
 
@@ -1356,6 +1357,42 @@ body[data-theme="dark"] .tl-note { color: #94a3b8; }
           <tr><td><kbd>?</kbd></td><td>Show this cheat sheet</td></tr>
         </tbody>
       </table>
+    </div>
+  </div>
+</div>
+<!-- Interview round modal -->
+<div class="overlay" id="roundModal" style="display:none">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-header">
+      <div class="modal-title">Log Interview Round</div>
+      <button class="modal-close" id="closeRoundBtn">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="roundJobId">
+      <div class="form-group">
+        <label>Round Type</label>
+        <select id="roundType">
+          <option value="Phone Screen">Phone Screen</option>
+          <option value="Technical">Technical Interview</option>
+          <option value="System Design">System Design</option>
+          <option value="Behavioral">Behavioral</option>
+          <option value="Final Round">Final Round</option>
+          <option value="HR">HR / Culture Fit</option>
+          <option value="Take-home">Take-home Assignment</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Date</label>
+        <input id="roundDate" type="date">
+      </div>
+      <div class="form-group">
+        <label>Outcome / Notes <span style="font-weight:400;color:#94a3b8">(optional)</span></label>
+        <input id="roundNote" placeholder="e.g. Went well, awaiting feedback…">
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" id="cancelRoundBtn">Cancel</button>
+        <button class="btn btn-primary" id="saveRoundBtn">Save Round</button>
+      </div>
     </div>
   </div>
 </div>
