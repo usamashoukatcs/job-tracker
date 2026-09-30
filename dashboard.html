@@ -759,6 +759,12 @@ kbd { display:inline-block; background:#f1f5f9; border:1px solid #cbd5e1; border
 .hbar-track { flex: 1; height: 8px; background: #f1f5f9; border-radius: 4px; overflow: hidden; }
 .hbar-fill { height: 8px; border-radius: 4px; transition: width .3s; }
 .hbar-count { font-size: 11px; font-weight: 700; color: #64748b; width: 22px; text-align: right; flex-shrink: 0; }
+.funnel-stage { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.funnel-bar-wrap { flex: 1; display: flex; flex-direction: column; gap: 3px; }
+.funnel-bar { height: 28px; border-radius: 5px; display: flex; align-items: center; padding: 0 10px; font-size: 12px; font-weight: 700; color: #fff; transition: width .4s; min-width: 40px; white-space: nowrap; }
+.funnel-meta { font-size: 11px; color: #94a3b8; }
+.funnel-label { font-size: 12px; color: #475569; width: 72px; flex-shrink: 0; }
+.funnel-arrow { font-size: 18px; color: #cbd5e1; }
 
 /* Saved badge */
 .saved-btn { background: #fef9c3 !important; color: #ca8a04 !important; border-color: #fde047 !important; }
@@ -965,6 +971,9 @@ body[data-theme="dark"] .chart-title { color: #e2e8f0; }
 body[data-theme="dark"] .bar-fill { background: #3b82f6; }
 body[data-theme="dark"] .bar-count { color: #64748b; }
 body[data-theme="dark"] .bar-label { color: #475569; }
+body[data-theme="dark"] .funnel-label { color: #94a3b8; }
+body[data-theme="dark"] .funnel-meta { color: #475569; }
+body[data-theme="dark"] .funnel-arrow { color: #334155; }
 body[data-theme="dark"] .hbar-label { color: #94a3b8; }
 body[data-theme="dark"] .hbar-track { background: #334155; }
 body[data-theme="dark"] .hbar-count { color: #64748b; }
@@ -1212,6 +1221,16 @@ body[data-theme="dark"] .tl-note { color: #94a3b8; }
     <div class="chart-card" style="margin-top:16px">
       <div class="chart-title">Application Activity — Last 16 Weeks</div>
       <div id="heatmapChart" style="overflow-x:auto"></div>
+    </div>
+    <div class="charts-row" style="margin-top:16px">
+      <div class="chart-card">
+        <div class="chart-title">Pipeline Funnel</div>
+        <div id="funnelChart"></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Source Effectiveness</div>
+        <div id="sourceChart"></div>
+      </div>
     </div>
   </div>
 

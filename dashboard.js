@@ -1751,4 +1751,51 @@ function renderAnalytics() {
 
   document.getElementById('heatmapChart').innerHTML =
     `${monthRow}<div class="heatmap-wrap">${dayAxis}${cols.join('')}</div>`;
+
+  // Pipeline funnel: applied → interviewed → offered
+  const funnelStages = [
+    { label: 'Applied',    count: total,      color: '#2563eb' },
+    { label: 'Responded',  count: responded,  color: '#6366f1' },
+    { label: 'Interviewed',count: interviewed,color: '#16a34a' },
+    { label: 'Offered',    count: offered,    color: '#d97706' },
+  ];
+  const funnelMax = Math.max(total, 1);
+  document.getElementById('funnelChart').innerHTML = funnelStages.map((s, i) => {
+    const pct   = Math.round(s.count / funnelMax * 100);
+    const dropPct = i > 0 && funnelStages[i - 1].count > 0
+      ? Math.round(s.count / funnelStages[i - 1].count * 100)
+      : null;
+    return `
+      <div class="funnel-stage">
+        <div class="funnel-label">${s.label}</div>
+        <div class="funnel-bar-wrap">
+          <div class="funnel-bar" style="width:${Math.max(pct, 8)}%;background:${s.color}">${s.count}</div>
+          ${dropPct !== null ? `<div class="funnel-meta">${dropPct}% of previous stage</div>` : ''}
+        </div>
+      </div>`;
+  }).join('') + (total === 0 ? '<div style="font-size:12px;color:#94a3b8">No data yet</div>' : '');
+
+  // Source effectiveness: interview rate per application method
+  const sourceMap = {};
+  for (const j of jobs) {
+    const src = j.applicationMethod || 'online';
+    if (!sourceMap[src]) sourceMap[src] = { total: 0, interviewed: 0 };
+    sourceMap[src].total++;
+    if (['interview','offer'].includes(j.status)) sourceMap[src].interviewed++;
+  }
+  const sourceLabels = { online: '🌐 Online', linkedin: '🔗 LinkedIn', email: '📧 Email', referral: '🤝 Referral' };
+  const sources = Object.entries(sourceMap)
+    .map(([k, v]) => ({ key: k, label: sourceLabels[k] || k, rate: v.total ? Math.round(v.interviewed / v.total * 100) : 0, total: v.total, interviewed: v.interviewed }))
+    .sort((a, b) => b.rate - a.rate);
+  const maxRate = Math.max(...sources.map(s => s.rate), 1);
+  document.getElementById('sourceChart').innerHTML = sources.length
+    ? sources.map(s => `
+        <div class="hbar-row">
+          <div class="hbar-label">${s.label}</div>
+          <div class="hbar-track"><div class="hbar-fill" style="width:${Math.round(s.rate/maxRate*100)}%;background:${s.rate >= 20 ? '#16a34a' : s.rate >= 8 ? '#2563eb' : '#94a3b8'}"></div></div>
+          <div class="hbar-count" style="width:36px">${s.rate}%</div>
+        </div>
+        <div style="font-size:10px;color:#94a3b8;margin:-8px 0 10px 86px">${s.interviewed}/${s.total} got interviews</div>`)
+      .join('')
+    : '<div style="font-size:12px;color:#94a3b8">No data yet</div>';
 }
