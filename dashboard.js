@@ -917,8 +917,58 @@ document.addEventListener('DOMContentLoaded', () => {
   if (location.search.includes('add=1')) openAddModal();
 
   // Main tab switching
-  document.getElementById('tabTracker').addEventListener('click', () => switchTab('tracker'));
-  document.getElementById('tabFinder').addEventListener('click',  () => switchTab('finder'));
+  document.getElementById('tabTracker').addEventListener('click',  () => switchTab('tracker'));
+  document.getElementById('tabFinder').addEventListener('click',   () => switchTab('finder'));
+  document.getElementById('tabWishlist').addEventListener('click', () => switchTab('wishlist'));
+
+  // Wishlist modal
+  document.getElementById('addWishlistBtn').addEventListener('click', openWishlistModal);
+  document.getElementById('closeWishlistModalBtn').addEventListener('click',  () => { document.getElementById('wishlistModal').style.display = 'none'; });
+  document.getElementById('cancelWishlistModalBtn').addEventListener('click', () => { document.getElementById('wishlistModal').style.display = 'none'; });
+  document.getElementById('saveWishlistBtn').addEventListener('click', async () => {
+    const company = document.getElementById('wCompany').value.trim();
+    if (!company) { document.getElementById('wCompany').focus(); return; }
+    await send('ADD_WISHLIST', { item: {
+      company,
+      title: document.getElementById('wTitle').value.trim(),
+      url:   document.getElementById('wUrl').value.trim(),
+      notes: document.getElementById('wNotes').value.trim(),
+    }});
+    document.getElementById('wishlistModal').style.display = 'none';
+    renderWishlist();
+  });
+
+  // Wishlist grid click delegation
+  document.getElementById('wishlistGrid').addEventListener('click', async e => {
+    const delBtn   = e.target.closest('[data-wl-delete]');
+    const startBtn = e.target.closest('[data-wl-start]');
+    if (delBtn) {
+      const id = delBtn.dataset.wlDelete;
+      await send('DELETE_WISHLIST', { id });
+      renderWishlist();
+    }
+    if (startBtn) {
+      const id = startBtn.dataset.wlStart;
+      const { items } = await send('GET_WISHLIST', {});
+      const item = items.find(i => i.id === id);
+      if (!item) return;
+      document.getElementById('fCompany').value = item.company;
+      document.getElementById('fTitle').value   = item.title || '';
+      document.getElementById('fUrl').value     = item.url   || '';
+      document.getElementById('fNotes').value   = item.notes || '';
+      document.getElementById('fStatus').value  = 'applied';
+      document.getElementById('fDate').value    = new Date().toISOString().slice(0, 10);
+      // clear remaining fields
+      ['fSalary','fResume','fTags','fEmail','fPrep','fMethod','fInterviewDate'].forEach(id => {
+        const el = document.getElementById(id); if (el) el.value = '';
+      });
+      editingId = null;
+      document.getElementById('modalTitle').textContent = 'Add Application';
+      document.getElementById('addModal').style.display = 'flex';
+      await send('DELETE_WISHLIST', { id });
+      switchTab('tracker');
+    }
+  });
 
   // Weekly goal input
   document.getElementById('goalInput').addEventListener('change', e => {
@@ -1095,9 +1145,10 @@ document.addEventListener('DOMContentLoaded', () => {
       || document.getElementById('shortcutsModal').style.display !== 'none';
 
     switch (e.key) {
-      case '1': switchTab('tracker'); break;
-      case '2': switchTab('finder');  break;
-      case '3': switchTab('stats');   break;
+      case '1': switchTab('tracker');  break;
+      case '2': switchTab('finder');   break;
+      case '3': switchTab('stats');    break;
+      case '4': switchTab('wishlist'); break;
       case 'a': if (!modalOpen) openAddModal(); break;
       case '/':
         e.preventDefault();
@@ -1192,16 +1243,62 @@ function saveSearchSettings() {
 // ── Finder ───────────────────────────────────────────────────────────────────
 
 function switchTab(tab) {
-  document.getElementById('tabTracker').classList.toggle('active', tab === 'tracker');
-  document.getElementById('tabFinder').classList.toggle('active',  tab === 'finder');
-  document.getElementById('tabStats').classList.toggle('active',   tab === 'stats');
-  document.getElementById('trackerPanel').style.display  = tab === 'tracker' ? '' : 'none';
-  document.getElementById('trackerSearch').style.display = tab === 'tracker' ? '' : 'none';
-  document.getElementById('finderPanel').style.display   = tab === 'finder'  ? '' : 'none';
-  document.getElementById('statsPanel').style.display    = tab === 'stats'   ? '' : 'none';
+  document.getElementById('tabTracker').classList.toggle('active',  tab === 'tracker');
+  document.getElementById('tabFinder').classList.toggle('active',   tab === 'finder');
+  document.getElementById('tabStats').classList.toggle('active',    tab === 'stats');
+  document.getElementById('tabWishlist').classList.toggle('active', tab === 'wishlist');
+  document.getElementById('trackerPanel').style.display   = tab === 'tracker'  ? '' : 'none';
+  document.getElementById('trackerSearch').style.display  = tab === 'tracker'  ? '' : 'none';
+  document.getElementById('finderPanel').style.display    = tab === 'finder'   ? '' : 'none';
+  document.getElementById('statsPanel').style.display     = tab === 'stats'    ? '' : 'none';
+  document.getElementById('wishlistPanel').style.display  = tab === 'wishlist' ? '' : 'none';
   if (tab !== 'tracker') clearSelection();
-  if (tab === 'finder') loadFinderJobs();
-  if (tab === 'stats')  renderAnalytics();
+  if (tab === 'finder')   loadFinderJobs();
+  if (tab === 'stats')    renderAnalytics();
+  if (tab === 'wishlist') renderWishlist();
+}
+
+// ── Wishlist ─────────────────────────────────────────────────────────────────
+
+async function renderWishlist() {
+  const { items } = await send('GET_WISHLIST', {});
+  const grid = document.getElementById('wishlistGrid');
+  if (!items || !items.length) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="es-icon">⭐</div><div class="es-text">No targets yet</div><div class="es-sub">Add companies you want to apply to — click "+ Add Target" to get started</div></div>`;
+    return;
+  }
+  grid.innerHTML = items.map(item => `
+    <div class="job-card" style="position:relative">
+      <div class="card-header">
+        <div class="card-avatar" style="${avatarStyle(item.company)}">${initials(item.company)}</div>
+        <div class="card-main">
+          <div class="card-title">${item.company}</div>
+          <div class="card-company">${item.title || 'Role not specified'}</div>
+        </div>
+        <button class="card-btn danger" style="align-self:flex-start" data-wl-delete="${item.id}" title="Remove">✕</button>
+      </div>
+      <div class="card-body">
+        <div class="card-meta">
+          ${item.url ? `<div class="meta-item"><a href="${item.url}" target="_blank" style="color:#2563eb;text-decoration:none">🔗 View Posting</a></div>` : ''}
+          <div class="meta-item" style="color:#94a3b8;font-size:11px">Added ${fmtDate(item.addedAt)}</div>
+        </div>
+        ${item.notes ? `<div class="card-notes">${item.notes}</div>` : ''}
+      </div>
+      <div class="card-actions">
+        <button class="card-btn accent" data-wl-start="${item.id}" style="background:#2563eb;color:#fff;border:none">▶ Start Application</button>
+        <a class="card-btn" href="https://www.glassdoor.com/Search/results.htm?keyword=${encodeURIComponent(item.company)}" target="_blank" style="text-decoration:none;display:flex;align-items:center;justify-content:center" title="Glassdoor">🌟</a>
+        <a class="card-btn" href="https://www.linkedin.com/search/results/companies/?keywords=${encodeURIComponent(item.company)}" target="_blank" style="text-decoration:none;display:flex;align-items:center;justify-content:center" title="LinkedIn">🔗</a>
+        <a class="card-btn" href="https://www.levels.fyi/companies/${encodeURIComponent(item.company.toLowerCase().replace(/\s+/g,'-'))}/salaries/" target="_blank" style="text-decoration:none;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700" title="Levels.fyi">💲</a>
+      </div>
+    </div>`).join('');
+}
+
+function openWishlistModal() {
+  document.getElementById('wCompany').value = '';
+  document.getElementById('wTitle').value   = '';
+  document.getElementById('wUrl').value     = '';
+  document.getElementById('wNotes').value   = '';
+  document.getElementById('wishlistModal').style.display = 'flex';
 }
 
 async function loadFinderJobs() {

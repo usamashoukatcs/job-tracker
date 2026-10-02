@@ -356,6 +356,26 @@ chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
         reply({ ok: true });
         break;
       }
+      case 'GET_WISHLIST': {
+        const r = await chrome.storage.local.get('wishlist');
+        reply({ items: r.wishlist || [] });
+        break;
+      }
+      case 'ADD_WISHLIST': {
+        const r = await chrome.storage.local.get('wishlist');
+        const list = r.wishlist || [];
+        const item = { id: Date.now().toString(), ...msg.item, addedAt: new Date().toISOString() };
+        list.unshift(item);
+        await chrome.storage.local.set({ wishlist: list });
+        reply({ item });
+        break;
+      }
+      case 'DELETE_WISHLIST': {
+        const r = await chrome.storage.local.get('wishlist');
+        await chrome.storage.local.set({ wishlist: (r.wishlist || []).filter(i => i.id !== msg.id) });
+        reply({ ok: true });
+        break;
+      }
       case 'GET_SETTINGS':
         reply({ settings: await getSettings() });
         break;
