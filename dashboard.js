@@ -439,6 +439,7 @@ function renderJobs() {
             <div class="meta-item">📅 ${fmtDate(j.appliedDate)}</div>
             <div class="meta-item">${methodIcon}</div>
             ${j.salary ? `<div class="meta-item">💰 ${j.salary}</div>` : ''}
+            ${j.resumeVersion ? `<div class="meta-item" title="Resume version">📄 ${j.resumeVersion}</div>` : ''}
             ${j.url ? `<div class="meta-item"><a href="${j.url}" target="_blank" style="color:#2563eb;text-decoration:none">🔗 View Job</a></div>` : ''}
           </div>
           ${j.tags && j.tags.length ? `<div class="card-tags">${j.tags.map(t => `<span class="card-tag" data-tag="${t}">#${t}</span>`).join('')}</div>` : ''}
@@ -478,6 +479,7 @@ function renderJobs() {
           ${j.applicationMethod === 'email' ? `<button class="card-btn" data-action="followup" data-job-id="${j.id}">📧 Follow-up</button>` : ''}
           <a class="card-btn" href="https://www.glassdoor.com/Search/results.htm?keyword=${encodeURIComponent(j.company)}" target="_blank" title="Glassdoor reviews" style="text-decoration:none;display:flex;align-items:center;justify-content:center">🌟</a>
           <a class="card-btn" href="https://www.linkedin.com/search/results/companies/?keywords=${encodeURIComponent(j.company)}" target="_blank" title="LinkedIn company" style="text-decoration:none;display:flex;align-items:center;justify-content:center">🔗</a>
+          <a class="card-btn" href="https://www.levels.fyi/companies/${encodeURIComponent(j.company.toLowerCase().replace(/\s+/g,'-'))}/salaries/" target="_blank" title="Levels.fyi salaries" style="text-decoration:none;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700">💲</a>
           <button class="card-btn" data-action="copy" data-job-id="${j.id}" title="Copy job details">📋</button>
           <button class="card-btn danger" data-action="delete" data-job-id="${j.id}">🗑</button>
         </div>
@@ -538,6 +540,7 @@ function openAddModal(prefill) {
   document.getElementById('fInterviewDate').value = '';
   document.getElementById('fSalary').value      = '';
   document.getElementById('fTags').value        = '';
+  document.getElementById('fResume').value      = '';
   document.getElementById('fEmail').value       = '';
   document.getElementById('fNotes').value       = '';
   document.getElementById('fPrep').value        = '';
@@ -558,6 +561,7 @@ function editJob(id) {
   document.getElementById('fInterviewDate').value = j.interviewDate ? j.interviewDate.split('T')[0] : '';
   document.getElementById('fSalary').value      = j.salary || '';
   document.getElementById('fTags').value        = (j.tags || []).join(', ');
+  document.getElementById('fResume').value      = j.resumeVersion || '';
   document.getElementById('fEmail').value       = j.contactEmail || '';
   document.getElementById('fNotes').value       = j.notes || '';
   document.getElementById('fPrep').value        = j.prepNotes || '';
@@ -594,8 +598,9 @@ async function saveJob() {
       ? new Date(document.getElementById('fInterviewDate').value).toISOString()
       : null,
     salary:       document.getElementById('fSalary').value.trim(),
-    tags:         document.getElementById('fTags').value.split(',').map(t => t.trim().toLowerCase()).filter(Boolean),
-    contactEmail: document.getElementById('fEmail').value.trim(),
+    tags:          document.getElementById('fTags').value.split(',').map(t => t.trim().toLowerCase()).filter(Boolean),
+    resumeVersion: document.getElementById('fResume').value.trim(),
+    contactEmail:  document.getElementById('fEmail').value.trim(),
     notes:        document.getElementById('fNotes').value.trim(),
     prepNotes:    document.getElementById('fPrep').value.trim()
   };
