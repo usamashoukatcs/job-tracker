@@ -405,6 +405,12 @@ function renderJobs() {
     const followupDue = j.applicationMethod === 'email' && j.status === 'applied' &&
       !j.followUpSent && daysAgo >= (settings.followUpDays || 7);
 
+    const lastActivityDate = (() => {
+      if (j.events && j.events.length) return j.events[j.events.length - 1].date;
+      return j.statusUpdated || j.appliedDate;
+    })();
+    const stale = ['applied', 'interview'].includes(j.status) && daysSince(lastActivityDate) >= 14;
+
     const timeline = events.map(e => `
       <div class="timeline-item">
         <div class="tl-dot ${e.type}"></div>
@@ -431,6 +437,7 @@ function renderJobs() {
           </div>
           <div class="card-badge">
             <span class="badge ${STATUS_BADGE[j.status] || 'badge-applied'}">${j.status}</span>
+            ${stale ? `<span class="badge-stale">🕰 stale</span>` : ''}
             ${j.statusUpdated ? `<span style="font-size:10px;color:#94a3b8;display:block;text-align:right;margin-top:3px">${daysSince(j.statusUpdated)}d</span>` : ''}</div>
         </div>
 
@@ -452,6 +459,7 @@ function renderJobs() {
             const col = diff <= 1 ? '#15803d' : '#1d4ed8';
             return `<div style="background:${bg};border:1px solid;border-color:${bg};border-radius:6px;padding:7px 10px;font-size:12px;color:${col};font-weight:600;margin-bottom:10px">📅 Interview ${label}</div>`;
           })()}
+          ${stale ? `<div style="background:#fef3c7;border:1px solid #fcd34d;border-radius:6px;padding:7px 10px;font-size:12px;color:#92400e;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between">🕰 No activity for ${daysSince(lastActivityDate)} days<button class="card-btn" data-action="archive-stale" data-job-id="${j.id}" style="font-size:11px;padding:2px 8px;margin:0">Archive</button></div>` : ''}
           ${followupDue ? `<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:7px 10px;font-size:12px;color:#92400e;margin-bottom:10px">⏰ Follow-up overdue — ${daysAgo} days with no response</div>` : ''}
           ${j.notes ? `<div class="card-notes">${j.notes}</div>` : ''}
           ${j.prepNotes ? `
@@ -846,10 +854,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!btn) return;
     const action = btn.dataset.action;
     const jobId  = btn.dataset.jobId || btn.closest('[data-job-id]')?.dataset.jobId;
-    if (action === 'edit')      editJob(jobId);
-    if (action === 'delete')    deleteJob(jobId);
-    if (action === 'followup')  openFollowupModal(jobId);
-    if (action === 'add-round') openRoundModal(jobId);
+    if (action === 'edit')          editJob(jobId);
+    if (action === 'delete')        deleteJob(jobId);
+    if (action === 'followup')      openFollowupModal(jobId);
+    if (action === 'add-round')     openRoundModal(jobId);
+    if (action === 'archive-stale') quickStatus(jobId, 'archived');
     if (action === 'copy') {
       const job = allJobs.find(j => j.id === jobId);
       if (job) {
