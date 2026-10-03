@@ -447,6 +447,7 @@ function renderJobs() {
             <div class="meta-item">${methodIcon}</div>
             ${j.salary ? `<div class="meta-item">💰 ${j.salary}</div>` : ''}
             ${j.resumeVersion ? `<div class="meta-item" title="Resume version">📄 ${j.resumeVersion}</div>` : ''}
+            ${j.recruiterName ? `<div class="meta-item">👤 ${j.recruiterLinkedin ? `<a href="${j.recruiterLinkedin}" target="_blank" style="color:#2563eb;text-decoration:none">${j.recruiterName}</a>` : j.recruiterName}</div>` : ''}
             ${j.url ? `<div class="meta-item"><a href="${j.url}" target="_blank" style="color:#2563eb;text-decoration:none">🔗 View Job</a></div>` : ''}
           </div>
           ${j.tags && j.tags.length ? `<div class="card-tags">${j.tags.map(t => `<span class="card-tag" data-tag="${t}">#${t}</span>`).join('')}</div>` : ''}
@@ -546,10 +547,12 @@ function openAddModal(prefill) {
   document.getElementById('fMethod').value     = 'online';
   document.getElementById('fDate').value       = new Date().toISOString().split('T')[0];
   document.getElementById('fInterviewDate').value = '';
-  document.getElementById('fSalary').value      = '';
-  document.getElementById('fTags').value        = '';
-  document.getElementById('fResume').value      = '';
-  document.getElementById('fEmail').value       = '';
+  document.getElementById('fSalary').value           = '';
+  document.getElementById('fTags').value             = '';
+  document.getElementById('fResume').value           = '';
+  document.getElementById('fRecruiterName').value    = '';
+  document.getElementById('fRecruiterLinkedin').value= '';
+  document.getElementById('fEmail').value            = '';
   document.getElementById('fNotes').value       = '';
   document.getElementById('fPrep').value        = '';
   document.getElementById('addModal').style.display = 'flex';
@@ -567,10 +570,12 @@ function editJob(id) {
   document.getElementById('fMethod').value     = j.applicationMethod || 'online';
   document.getElementById('fDate').value       = j.appliedDate ? j.appliedDate.split('T')[0] : '';
   document.getElementById('fInterviewDate').value = j.interviewDate ? j.interviewDate.split('T')[0] : '';
-  document.getElementById('fSalary').value      = j.salary || '';
-  document.getElementById('fTags').value        = (j.tags || []).join(', ');
-  document.getElementById('fResume').value      = j.resumeVersion || '';
-  document.getElementById('fEmail').value       = j.contactEmail || '';
+  document.getElementById('fSalary').value            = j.salary || '';
+  document.getElementById('fTags').value              = (j.tags || []).join(', ');
+  document.getElementById('fResume').value            = j.resumeVersion || '';
+  document.getElementById('fRecruiterName').value     = j.recruiterName || '';
+  document.getElementById('fRecruiterLinkedin').value = j.recruiterLinkedin || '';
+  document.getElementById('fEmail').value             = j.contactEmail || '';
   document.getElementById('fNotes').value       = j.notes || '';
   document.getElementById('fPrep').value        = j.prepNotes || '';
   document.getElementById('addModal').style.display = 'flex';
@@ -606,9 +611,11 @@ async function saveJob() {
       ? new Date(document.getElementById('fInterviewDate').value).toISOString()
       : null,
     salary:       document.getElementById('fSalary').value.trim(),
-    tags:          document.getElementById('fTags').value.split(',').map(t => t.trim().toLowerCase()).filter(Boolean),
-    resumeVersion: document.getElementById('fResume').value.trim(),
-    contactEmail:  document.getElementById('fEmail').value.trim(),
+    tags:              document.getElementById('fTags').value.split(',').map(t => t.trim().toLowerCase()).filter(Boolean),
+    resumeVersion:     document.getElementById('fResume').value.trim(),
+    recruiterName:     document.getElementById('fRecruiterName').value.trim(),
+    recruiterLinkedin: document.getElementById('fRecruiterLinkedin').value.trim(),
+    contactEmail:      document.getElementById('fEmail').value.trim(),
     notes:        document.getElementById('fNotes').value.trim(),
     prepNotes:    document.getElementById('fPrep').value.trim()
   };
@@ -968,7 +975,7 @@ document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('fStatus').value  = 'applied';
       document.getElementById('fDate').value    = new Date().toISOString().slice(0, 10);
       // clear remaining fields
-      ['fSalary','fResume','fTags','fEmail','fPrep','fMethod','fInterviewDate'].forEach(id => {
+      ['fSalary','fResume','fTags','fEmail','fPrep','fMethod','fInterviewDate','fRecruiterName','fRecruiterLinkedin'].forEach(id => {
         const el = document.getElementById(id); if (el) el.value = '';
       });
       editingId = null;
