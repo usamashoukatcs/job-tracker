@@ -7,6 +7,14 @@ async function getJobs() {
 
 async function saveJobs(jobs) {
   await chrome.storage.local.set({ jobs });
+  updateBadge(jobs);
+}
+
+function updateBadge(jobs) {
+  const active = jobs.filter(j => j.status !== 'archived').length;
+  const text   = active > 0 ? String(active) : '';
+  chrome.action.setBadgeText({ text });
+  chrome.action.setBadgeBackgroundColor({ color: '#2563eb' });
 }
 
 async function getSettings() {
@@ -297,9 +305,14 @@ function notify(title, message) {
 
 // ── Event listeners ──────────────────────────────────────────────────────────
 
-chrome.runtime.onInstalled.addListener(() => {
+chrome.runtime.onInstalled.addListener(async () => {
   chrome.alarms.create('gmail-sync', { periodInMinutes: 15 });
   chrome.alarms.create('followup-check', { periodInMinutes: 60 });
+  updateBadge(await getJobs());
+});
+
+chrome.runtime.onStartup.addListener(async () => {
+  updateBadge(await getJobs());
 });
 
 chrome.alarms.onAlarm.addListener(async (alarm) => {
