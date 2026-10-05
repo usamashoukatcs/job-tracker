@@ -232,7 +232,8 @@ function getFiltered() {
     jobs = jobs.filter(j =>
       j.title.toLowerCase().includes(q) ||
       j.company.toLowerCase().includes(q) ||
-      (j.notes || '').toLowerCase().includes(q)
+      (j.notes || '').toLowerCase().includes(q) ||
+      (j.jobDescription || '').toLowerCase().includes(q)
     );
   }
   if (currentTagFilter) {
@@ -463,6 +464,9 @@ function renderJobs() {
           ${stale ? `<div style="background:#fef3c7;border:1px solid #fcd34d;border-radius:6px;padding:7px 10px;font-size:12px;color:#92400e;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between">🕰 No activity for ${daysSince(lastActivityDate)} days<button class="card-btn" data-action="archive-stale" data-job-id="${j.id}" style="font-size:11px;padding:2px 8px;margin:0">Archive</button></div>` : ''}
           ${followupDue ? `<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:7px 10px;font-size:12px;color:#92400e;margin-bottom:10px">⏰ Follow-up overdue — ${daysAgo} days with no response</div>` : ''}
           ${j.notes ? `<div class="card-notes">${j.notes}</div>` : ''}
+          ${j.jobDescription ? `
+            <span class="card-prep-toggle" data-jd-id="${j.id}">📄 Job Description ▾</span>
+            <div class="card-prep" id="jd-${j.id}" style="display:none;margin:0 16px 10px;color:#64748b">${j.jobDescription.replace(/\n/g,'<br>')}</div>` : ''}
           ${j.prepNotes ? `
             <span class="card-prep-toggle" data-prep-id="${j.id}">📋 Interview Prep ▾</span>
             <div class="card-prep" id="prep-${j.id}" style="display:none;margin:0 16px 10px">${j.prepNotes.replace(/\n/g,'<br>')}</div>` : ''}
@@ -554,6 +558,7 @@ function openAddModal(prefill) {
   document.getElementById('fRecruiterLinkedin').value= '';
   document.getElementById('fEmail').value            = '';
   document.getElementById('fNotes').value       = '';
+  document.getElementById('fJobDesc').value     = '';
   document.getElementById('fPrep').value        = '';
   document.getElementById('addModal').style.display = 'flex';
 }
@@ -577,6 +582,7 @@ function editJob(id) {
   document.getElementById('fRecruiterLinkedin').value = j.recruiterLinkedin || '';
   document.getElementById('fEmail').value             = j.contactEmail || '';
   document.getElementById('fNotes').value       = j.notes || '';
+  document.getElementById('fJobDesc').value     = j.jobDescription || '';
   document.getElementById('fPrep').value        = j.prepNotes || '';
   document.getElementById('addModal').style.display = 'flex';
 }
@@ -617,7 +623,8 @@ async function saveJob() {
     recruiterLinkedin: document.getElementById('fRecruiterLinkedin').value.trim(),
     contactEmail:      document.getElementById('fEmail').value.trim(),
     notes:        document.getElementById('fNotes').value.trim(),
-    prepNotes:    document.getElementById('fPrep').value.trim()
+    jobDescription: document.getElementById('fJobDesc').value.trim(),
+    prepNotes:      document.getElementById('fPrep').value.trim()
   };
 
   if (id) {
@@ -798,12 +805,13 @@ document.addEventListener('DOMContentLoaded', () => {
     await reload();
   });
 
-  // Prep toggle
+  // Prep / JD toggles
   document.getElementById('jobsGrid').addEventListener('click', e => {
     const toggle = e.target.closest('.card-prep-toggle');
     if (!toggle) return;
-    const id = toggle.dataset.prepId;
-    const panel = document.getElementById(`prep-${id}`);
+    const prepId = toggle.dataset.prepId;
+    const jdId   = toggle.dataset.jdId;
+    const panel  = prepId ? document.getElementById(`prep-${prepId}`) : document.getElementById(`jd-${jdId}`);
     if (!panel) return;
     const open = panel.style.display !== 'none';
     panel.style.display = open ? 'none' : 'block';
@@ -975,7 +983,7 @@ document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('fStatus').value  = 'applied';
       document.getElementById('fDate').value    = new Date().toISOString().slice(0, 10);
       // clear remaining fields
-      ['fSalary','fResume','fTags','fEmail','fPrep','fMethod','fInterviewDate','fRecruiterName','fRecruiterLinkedin'].forEach(id => {
+      ['fSalary','fResume','fTags','fEmail','fPrep','fJobDesc','fMethod','fInterviewDate','fRecruiterName','fRecruiterLinkedin'].forEach(id => {
         const el = document.getElementById(id); if (el) el.value = '';
       });
       editingId = null;
