@@ -461,6 +461,14 @@ function renderJobs() {
             const col = diff <= 1 ? '#15803d' : '#1d4ed8';
             return `<div style="background:${bg};border:1px solid;border-color:${bg};border-radius:6px;padding:7px 10px;font-size:12px;color:${col};font-weight:600;margin-bottom:10px">📅 Interview ${label}</div>`;
           })()}
+          ${(function() {
+            if (!j.followupDate) return '';
+            const diff = Math.round((new Date(j.followupDate) - Date.now()) / 86400000);
+            if (diff < -30) return '';
+            if (diff < 0)  return `<div style="background:#fee2e2;border:1px solid #fca5a5;border-radius:6px;padding:7px 10px;font-size:12px;color:#b91c1c;font-weight:600;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between">📌 Follow-up overdue by ${Math.abs(diff)}d<button class="card-btn" data-action="clear-followup" data-job-id="${j.id}" style="font-size:11px;padding:2px 8px;margin:0">Clear</button></div>`;
+            if (diff === 0) return `<div style="background:#dcfce7;border:1px solid #86efac;border-radius:6px;padding:7px 10px;font-size:12px;color:#15803d;font-weight:600;margin-bottom:10px">📌 Follow-up due today!</div>`;
+            return `<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:6px;padding:7px 10px;font-size:12px;color:#1d4ed8;margin-bottom:10px">📌 Follow-up in ${diff}d — ${new Date(j.followupDate).toLocaleDateString('en-US',{month:'short',day:'numeric'})}</div>`;
+          })()}
           ${stale ? `<div style="background:#fef3c7;border:1px solid #fcd34d;border-radius:6px;padding:7px 10px;font-size:12px;color:#92400e;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between">🕰 No activity for ${daysSince(lastActivityDate)} days<button class="card-btn" data-action="archive-stale" data-job-id="${j.id}" style="font-size:11px;padding:2px 8px;margin:0">Archive</button></div>` : ''}
           ${followupDue ? `<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:7px 10px;font-size:12px;color:#92400e;margin-bottom:10px">⏰ Follow-up overdue — ${daysAgo} days with no response</div>` : ''}
           ${j.notes ? `<div class="card-notes">${j.notes}</div>` : ''}
@@ -558,6 +566,7 @@ function openAddModal(prefill) {
   document.getElementById('fRecruiterLinkedin').value= '';
   document.getElementById('fEmail').value            = '';
   document.getElementById('fNotes').value       = '';
+  document.getElementById('fFollowupDate').value = '';
   document.getElementById('fJobDesc').value     = '';
   document.getElementById('fPrep').value        = '';
   document.getElementById('addModal').style.display = 'flex';
@@ -582,8 +591,9 @@ function editJob(id) {
   document.getElementById('fRecruiterLinkedin').value = j.recruiterLinkedin || '';
   document.getElementById('fEmail').value             = j.contactEmail || '';
   document.getElementById('fNotes').value       = j.notes || '';
-  document.getElementById('fJobDesc').value     = j.jobDescription || '';
-  document.getElementById('fPrep').value        = j.prepNotes || '';
+  document.getElementById('fFollowupDate').value = j.followupDate ? j.followupDate.slice(0, 10) : '';
+  document.getElementById('fJobDesc').value      = j.jobDescription || '';
+  document.getElementById('fPrep').value         = j.prepNotes || '';
   document.getElementById('addModal').style.display = 'flex';
 }
 
@@ -623,6 +633,7 @@ async function saveJob() {
     recruiterLinkedin: document.getElementById('fRecruiterLinkedin').value.trim(),
     contactEmail:      document.getElementById('fEmail').value.trim(),
     notes:        document.getElementById('fNotes').value.trim(),
+    followupDate:   document.getElementById('fFollowupDate').value || null,
     jobDescription: document.getElementById('fJobDesc').value.trim(),
     prepNotes:      document.getElementById('fPrep').value.trim()
   };
@@ -873,7 +884,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (action === 'delete')        deleteJob(jobId);
     if (action === 'followup')      openFollowupModal(jobId);
     if (action === 'add-round')     openRoundModal(jobId);
-    if (action === 'archive-stale') quickStatus(jobId, 'archived');
+    if (action === 'archive-stale')  quickStatus(jobId, 'archived');
+    if (action === 'clear-followup') {
+      send('UPDATE_JOB', { id: jobId, updates: { followupDate: null } }).then(reload);
+    }
     if (action === 'copy') {
       const job = allJobs.find(j => j.id === jobId);
       if (job) {
@@ -983,7 +997,7 @@ document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('fStatus').value  = 'applied';
       document.getElementById('fDate').value    = new Date().toISOString().slice(0, 10);
       // clear remaining fields
-      ['fSalary','fResume','fTags','fEmail','fPrep','fJobDesc','fMethod','fInterviewDate','fRecruiterName','fRecruiterLinkedin'].forEach(id => {
+      ['fSalary','fResume','fTags','fEmail','fPrep','fJobDesc','fFollowupDate','fMethod','fInterviewDate','fRecruiterName','fRecruiterLinkedin'].forEach(id => {
         const el = document.getElementById(id); if (el) el.value = '';
       });
       editingId = null;
