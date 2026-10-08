@@ -1955,4 +1955,30 @@ function renderAnalytics() {
         <div style="font-size:10px;color:#94a3b8;margin:-8px 0 10px 86px">${s.interviewed}/${s.total} got interviews</div>`)
       .join('')
     : '<div style="font-size:12px;color:#94a3b8">No data yet</div>';
+
+  // ── Tag analytics ────────────────────────────────────────────────────────
+  const tagMap = {};
+  jobs.forEach(j => {
+    (j.tags || []).forEach(t => {
+      if (!tagMap[t]) tagMap[t] = { total: 0, interviewed: 0, offered: 0 };
+      tagMap[t].total++;
+      if (['interview','offer'].includes(j.status)) tagMap[t].interviewed++;
+      if (j.status === 'offer') tagMap[t].offered++;
+    });
+  });
+  const tags = Object.entries(tagMap)
+    .map(([tag, d]) => ({ tag, ...d, rate: d.total ? Math.round(d.interviewed / d.total * 100) : 0 }))
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 12);
+  const maxTagCount = tags.length ? tags[0].total : 1;
+  document.getElementById('tagChart').innerHTML = tags.length
+    ? tags.map(t => `
+        <div class="hbar-row">
+          <div class="hbar-label" style="color:#6366f1">#${t.tag}</div>
+          <div class="hbar-track"><div class="hbar-fill" style="width:${Math.round(t.total/maxTagCount*100)}%;background:#6366f1"></div></div>
+          <div class="hbar-count">${t.total}</div>
+        </div>
+        <div style="font-size:10px;color:#94a3b8;margin:-8px 0 10px 86px">${t.interviewed} interview${t.interviewed !== 1 ? 's' : ''}${t.offered ? ` · ${t.offered} offer${t.offered !== 1 ? 's' : ''}` : ''}</div>`)
+      .join('')
+    : '<div style="font-size:12px;color:#94a3b8">No tagged jobs yet</div>';
 }
