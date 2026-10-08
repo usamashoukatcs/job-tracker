@@ -245,6 +245,7 @@ function getFiltered() {
     case 'company':   jobs.sort((a, b) => (a.company || '').localeCompare(b.company || '')); break;
     case 'status':    jobs.sort((a, b) => (STATUS_ORDER[a.status] ?? 9) - (STATUS_ORDER[b.status] ?? 9)); break;
     case 'priority':  jobs.sort((a, b) => (b.priority || 0) - (a.priority || 0)); break;
+    case 'interest':  jobs.sort((a, b) => (b.interest || 0) - (a.interest || 0)); break;
     default:          jobs.sort((a, b) => new Date(b.appliedDate) - new Date(a.appliedDate)); break;
   }
   return jobs;
@@ -435,6 +436,7 @@ function renderJobs() {
             <div class="card-title">${j.title}</div>
             <div class="card-company">${j.company}</div>
             <div class="priority-stars" data-job-id="${j.id}">${[1,2,3].map(n => `<span class="pstar${(j.priority||0) >= n ? ' pstar-on' : ''}" data-star="${n}" title="${n === 1 ? 'Low' : n === 2 ? 'Medium' : 'High'} priority">★</span>`).join('')}</div>
+            <div class="interest-hearts" data-job-id="${j.id}">${[1,2,3,4,5].map(n => `<span class="iheart${(j.interest||0) >= n ? ' iheart-on' : ''}" data-heart="${n}" title="${n === 1 ? 'Meh' : n === 2 ? 'OK' : n === 3 ? 'Like' : n === 4 ? 'Want' : 'Dream job'}">♥</span>`).join('')}</div>
           </div>
           <div class="card-badge">
             <span class="badge ${STATUS_BADGE[j.status] || 'badge-applied'}">${j.status}</span>
@@ -847,8 +849,22 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!jobId) return;
     const n = parseInt(star.dataset.star, 10);
     const job = allJobs.find(j => j.id === jobId);
-    const newPriority = job && job.priority === n ? 0 : n; // click same star to clear
+    const newPriority = job && job.priority === n ? 0 : n;
     await send('UPDATE_JOB', { id: jobId, updates: { priority: newPriority } });
+    await reload();
+  });
+
+  // Interest hearts
+  document.getElementById('jobsGrid').addEventListener('click', async e => {
+    const heart = e.target.closest('.iheart');
+    if (!heart) return;
+    const wrap  = heart.closest('.interest-hearts');
+    const jobId = wrap?.dataset.jobId;
+    if (!jobId) return;
+    const n = parseInt(heart.dataset.heart, 10);
+    const job = allJobs.find(j => j.id === jobId);
+    const newInterest = job && job.interest === n ? 0 : n;
+    await send('UPDATE_JOB', { id: jobId, updates: { interest: newInterest } });
     await reload();
   });
 
@@ -872,7 +888,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Job grid: click delegation (edit, delete, followup)
   document.getElementById('jobsGrid').addEventListener('click', e => {
-    if (e.target.closest('.pstar')) return;
+    if (e.target.closest('.pstar'))   return;
+    if (e.target.closest('.iheart'))  return;
     if (e.target.closest('.quick-note-submit')) return;
     if (e.target.closest('.card-prep-toggle')) return;
     if (e.target.closest('.card-tag')) return;
