@@ -251,6 +251,31 @@ async function checkFollowUps() {
   }
 }
 
+async function checkInterviews() {
+  const jobs = await getJobs();
+  const now = new Date();
+  const todayStr = now.toISOString().slice(0, 10);
+  const tomorrowStr = new Date(now.getTime() + 86400000).toISOString().slice(0, 10);
+
+  for (const job of jobs) {
+    if (!job.interviewDate) continue;
+    const dateStr = job.interviewDate.slice(0, 10);
+    if (dateStr !== todayStr && dateStr !== tomorrowStr) continue;
+    const notifKey = `interview-notif-${job.id}-${dateStr}`;
+    const r = await chrome.storage.local.get(notifKey);
+    if (r[notifKey]) continue;
+    await chrome.storage.local.set({ [notifKey]: true });
+    const when = dateStr === todayStr ? 'TODAY' : 'TOMORROW';
+    chrome.notifications.create(`interview-${job.id}`, {
+      type: 'basic',
+      iconUrl: 'icons/icon48.png',
+      title: `Interview ${when} 🎙`,
+      message: `${job.title} at ${job.company} — interview ${when.toLowerCase()}. Good luck!`,
+      buttons: [{ title: 'Open Dashboard' }]
+    });
+  }
+}
+
 // ── AI answer ────────────────────────────────────────────────────────────────
 
 async function getAIAnswer(question, context, description) {
@@ -307,7 +332,8 @@ function notify(title, message) {
 
 chrome.runtime.onInstalled.addListener(async () => {
   chrome.alarms.create('gmail-sync', { periodInMinutes: 15 });
-  chrome.alarms.create('followup-check', { periodInMinutes: 60 });
+  chrome.alarms.create('followup-check',  { periodInMinutes: 60 });
+  chrome.alarms.create('interview-check', { periodInMinutes: 60 });
   updateBadge(await getJobs());
 });
 
@@ -316,12 +342,13 @@ chrome.runtime.onStartup.addListener(async () => {
 });
 
 chrome.alarms.onAlarm.addListener(async (alarm) => {
-  if (alarm.name === 'gmail-sync') await syncGmail();
-  if (alarm.name === 'followup-check') await checkFollowUps();
+  if (alarm.name === 'gmail-sync')       await syncGmail();
+  if (alarm.name === 'followup-check')   await checkFollowUps();
+  if (alarm.name === 'interview-check')  await checkInterviews();
 });
 
 chrome.notifications.onButtonClicked.addListener((notifId, btnIdx) => {
-  if (notifId.startsWith('followup-') && btnIdx === 0) {
+  if ((notifId.startsWith('followup-') || notifId.startsWith('interview-')) && btnIdx === 0) {
     chrome.tabs.create({ url: chrome.runtime.getURL('dashboard.html') });
   }
 });
