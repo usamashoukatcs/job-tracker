@@ -1036,6 +1036,15 @@ document.addEventListener('DOMContentLoaded', () => {
   // Stats tab
   document.getElementById('tabStats').addEventListener('click', () => switchTab('stats'));
 
+  // KPI cards in Stats tab → jump to tracker filtered
+  document.getElementById('statsPanel').addEventListener('click', e => {
+    const card = e.target.closest('.kpi-clickable[data-kpi-filter]');
+    if (!card) return;
+    const f = card.dataset.kpiFilter;
+    switchTab('tracker');
+    setFilter(f, document.querySelector(`.stat-card[data-filter="${f}"], .filter-tab[data-filter="${f}"]`));
+  });
+
   // Finder view toggle (Jobs / LinkedIn Posts / Saved)
   document.getElementById('finderViewJobs').addEventListener('click',  () => setFinderView('jobs'));
   document.getElementById('finderViewPosts').addEventListener('click', () => setFinderView('posts'));
@@ -1773,22 +1782,22 @@ function renderAnalytics() {
     : null;
 
   document.getElementById('kpiRow').innerHTML = `
-    <div class="kpi-card">
+    <div class="kpi-card kpi-clickable" data-kpi-filter="all" title="View all applications">
       <div class="kpi-value c-blue">${total}</div>
       <div class="kpi-label">Total Applied</div>
       <div class="kpi-sub">${active} active in pipeline</div>
     </div>
-    <div class="kpi-card">
+    <div class="kpi-card kpi-clickable" data-kpi-filter="applied" title="View applied jobs">
       <div class="kpi-value ${responseRate >= 20 ? 'c-green' : responseRate >= 8 ? 'c-yellow' : 'c-red'}">${responseRate}%</div>
       <div class="kpi-label">Response Rate</div>
       <div class="kpi-sub">${responded} of ${total} heard back</div>
     </div>
-    <div class="kpi-card">
+    <div class="kpi-card kpi-clickable" data-kpi-filter="interview" title="View interviews">
       <div class="kpi-value ${interviewRate >= 10 ? 'c-green' : 'c-yellow'}">${interviewRate}%</div>
       <div class="kpi-label">Interview Rate</div>
       <div class="kpi-sub">${interviewed} interview${interviewed !== 1 ? 's' : ''}</div>
     </div>
-    <div class="kpi-card">
+    <div class="kpi-card kpi-clickable" data-kpi-filter="offer" title="View offers">
       <div class="kpi-value c-yellow">${offered}</div>
       <div class="kpi-label">Offers</div>
       <div class="kpi-sub">${offered ? '🎉 Nice work!' : 'Keep going!'}</div>
