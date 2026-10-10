@@ -908,8 +908,22 @@ document.addEventListener('DOMContentLoaded', () => {
     if (action === 'copy') {
       const job = allJobs.find(j => j.id === jobId);
       if (job) {
-        const text = [job.title, job.company, job.url].filter(Boolean).join(' | ');
-        navigator.clipboard.writeText(text).then(() => showToast('Job details copied!', 'success'));
+        const lines = [
+          `${job.title} — ${job.company}`,
+          `Status: ${job.status}  |  Applied: ${fmtDate(job.appliedDate)}`,
+          job.salary       ? `Salary: ${job.salary}` : null,
+          job.url          ? `Posting: ${job.url}` : null,
+          job.recruiterName ? `Recruiter: ${job.recruiterName}${job.recruiterLinkedin ? ' — ' + job.recruiterLinkedin : ''}` : null,
+          job.contactEmail  ? `Email: ${job.contactEmail}` : null,
+          job.resumeVersion ? `Resume: ${job.resumeVersion}` : null,
+          job.interviewDate ? `Interview date: ${fmtDate(job.interviewDate)}` : null,
+          '',
+          job.jobDescription ? `JOB DESCRIPTION\n${job.jobDescription}` : null,
+          job.notes         ? `NOTES\n${job.notes}` : null,
+          job.prepNotes     ? `INTERVIEW PREP\n${job.prepNotes}` : null,
+          (job.tags && job.tags.length) ? `Tags: ${job.tags.map(t => '#'+t).join(' ')}` : null,
+        ].filter(l => l !== null).join('\n');
+        navigator.clipboard.writeText(lines).then(() => showToast('Job summary copied to clipboard!', 'success'));
       }
     }
   });
