@@ -2004,4 +2004,27 @@ function renderAnalytics() {
         <div style="font-size:10px;color:#94a3b8;margin:-8px 0 10px 86px">${t.interviewed} interview${t.interviewed !== 1 ? 's' : ''}${t.offered ? ` · ${t.offered} offer${t.offered !== 1 ? 's' : ''}` : ''}</div>`)
       .join('')
     : '<div style="font-size:12px;color:#94a3b8">No tagged jobs yet</div>';
+
+  // ── Day-of-week chart ────────────────────────────────────────────────────
+  const DOW_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const dowCounts = [0, 0, 0, 0, 0, 0, 0];
+  jobs.forEach(j => {
+    const d = new Date(j.appliedDate);
+    if (!isNaN(d)) dowCounts[d.getDay()]++;
+  });
+  const maxDow = Math.max(...dowCounts, 1);
+  // reorder Mon–Sun for display
+  const dowOrder = [1, 2, 3, 4, 5, 6, 0];
+  document.getElementById('dowChart').innerHTML = dowCounts.every(c => c === 0)
+    ? '<div style="font-size:12px;color:#94a3b8">No data yet</div>'
+    : dowOrder.map(i => {
+        const pct = Math.round(dowCounts[i] / maxDow * 100);
+        const isTop = dowCounts[i] === maxDow && maxDow > 0;
+        return `
+          <div class="hbar-row">
+            <div class="hbar-label" style="${isTop ? 'color:#16a34a;font-weight:700' : ''}">${DOW_LABELS[i]}</div>
+            <div class="hbar-track"><div class="hbar-fill" style="width:${pct}%;background:${isTop ? '#16a34a' : '#2563eb'}"></div></div>
+            <div class="hbar-count">${dowCounts[i]}</div>
+          </div>`;
+      }).join('');
 }
