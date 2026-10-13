@@ -1060,9 +1060,10 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Finder view toggle (Jobs / LinkedIn Posts / Saved)
-  document.getElementById('finderViewJobs').addEventListener('click',  () => setFinderView('jobs'));
-  document.getElementById('finderViewPosts').addEventListener('click', () => setFinderView('posts'));
-  document.getElementById('finderViewSaved').addEventListener('click', () => setFinderView('saved'));
+  document.getElementById('finderViewJobs').addEventListener('click',   () => setFinderView('jobs'));
+  document.getElementById('finderViewPosts').addEventListener('click',  () => setFinderView('posts'));
+  document.getElementById('finderViewSaved').addEventListener('click',  () => setFinderView('saved'));
+  document.getElementById('finderViewHidden').addEventListener('click', () => setFinderView('hidden'));
 
   // Finder text search
   document.getElementById('finderSearch').addEventListener('input', e => {
@@ -1419,14 +1420,15 @@ function matchesSourceFilter(j, filter) {
 
 function setFinderView(mode) {
   finderView = mode;
-  document.getElementById('finderViewJobs').classList.toggle('active',  mode === 'jobs');
-  document.getElementById('finderViewPosts').classList.toggle('active', mode === 'posts');
-  document.getElementById('finderViewSaved').classList.toggle('active', mode === 'saved');
+  document.getElementById('finderViewJobs').classList.toggle('active',   mode === 'jobs');
+  document.getElementById('finderViewPosts').classList.toggle('active',  mode === 'posts');
+  document.getElementById('finderViewSaved').classList.toggle('active',  mode === 'saved');
+  document.getElementById('finderViewHidden').classList.toggle('active', mode === 'hidden');
   document.getElementById('finderHeading').textContent =
-    mode === 'posts' ? 'LinkedIn Hiring Posts — Golang Opportunities' :
-    mode === 'saved' ? '⭐ Saved Jobs' :
+    mode === 'posts'  ? 'LinkedIn Hiring Posts — Golang Opportunities' :
+    mode === 'saved'  ? '⭐ Saved Jobs' :
+    mode === 'hidden' ? `🚫 Hidden Jobs (${hiddenFinderIds.size})` :
     'Job Suggestions — Scored for Your Profile';
-  // Source filter chips only make sense in the jobs view
   const filterRow = document.getElementById('finderFilterRow');
   if (filterRow) filterRow.style.display = mode === 'jobs' ? '' : 'none';
   renderFinderJobs();
@@ -1434,6 +1436,37 @@ function setFinderView(mode) {
 
 function renderFinderJobs() {
   const grid = document.getElementById('finderGrid');
+
+  if (finderView === 'hidden') {
+    const hiddenJobs = finderJobs.filter(j => hiddenFinderIds.has(j.id));
+    if (!hiddenJobs.length) {
+      grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="es-icon">🚫</div><div class="es-text">No hidden jobs</div><div class="es-sub">Jobs you dismiss won't appear here until you hide some</div></div>`;
+      return;
+    }
+    grid.innerHTML = hiddenJobs.map(j => `
+      <div class="finder-card" style="opacity:0.75">
+        <div class="fc-header">
+          <div class="fc-avatar" style="${avatarStyle(j.company)}">${initials(j.company)}</div>
+          <div class="fc-main">
+            <div class="fc-title">${j.title}</div>
+            <div class="fc-company">${j.company}${j.location ? ` · ${j.location}` : ''}</div>
+          </div>
+        </div>
+        <div class="fc-actions">
+          <button class="card-btn" style="background:#2563eb;color:#fff;border:none" data-unhide="${j.id}">↩ Unhide</button>
+        </div>
+      </div>`).join('');
+
+    grid.querySelectorAll('[data-unhide]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.dataset.unhide;
+        hiddenFinderIds.delete(id);
+        localStorage.setItem('hiddenFinderIds', JSON.stringify([...hiddenFinderIds]));
+        setFinderView('hidden');
+      });
+    });
+    return;
+  }
 
   let visibleJobs =
     finderView === 'posts' ? finderJobs.filter(j => j.source === 'linkedin-post') :
