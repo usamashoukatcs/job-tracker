@@ -251,6 +251,27 @@ async function checkFollowUps() {
   }
 }
 
+async function checkCustomFollowups() {
+  const jobs = await getJobs();
+  const todayStr = new Date().toISOString().slice(0, 10);
+
+  for (const job of jobs) {
+    if (!job.followupDate) continue;
+    if (job.followupDate.slice(0, 10) !== todayStr) continue;
+    const notifKey = `custom-followup-notif-${job.id}-${todayStr}`;
+    const r = await chrome.storage.local.get(notifKey);
+    if (r[notifKey]) continue;
+    await chrome.storage.local.set({ [notifKey]: true });
+    chrome.notifications.create(`custom-followup-${job.id}`, {
+      type: 'basic',
+      iconUrl: 'icons/icon48.png',
+      title: '📌 Follow-up Reminder',
+      message: `Reminder to follow up on ${job.title} at ${job.company} today.`,
+      buttons: [{ title: 'Open Dashboard' }]
+    });
+  }
+}
+
 async function checkInterviews() {
   const jobs = await getJobs();
   const now = new Date();
@@ -343,12 +364,12 @@ chrome.runtime.onStartup.addListener(async () => {
 
 chrome.alarms.onAlarm.addListener(async (alarm) => {
   if (alarm.name === 'gmail-sync')       await syncGmail();
-  if (alarm.name === 'followup-check')   await checkFollowUps();
+  if (alarm.name === 'followup-check')   { await checkFollowUps(); await checkCustomFollowups(); }
   if (alarm.name === 'interview-check')  await checkInterviews();
 });
 
 chrome.notifications.onButtonClicked.addListener((notifId, btnIdx) => {
-  if ((notifId.startsWith('followup-') || notifId.startsWith('interview-')) && btnIdx === 0) {
+  if ((notifId.startsWith('followup-') || notifId.startsWith('custom-followup-') || notifId.startsWith('interview-')) && btnIdx === 0) {
     chrome.tabs.create({ url: chrome.runtime.getURL('dashboard.html') });
   }
 });
