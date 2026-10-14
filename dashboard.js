@@ -2060,4 +2060,29 @@ function renderAnalytics() {
             <div class="hbar-count">${dowCounts[i]}</div>
           </div>`;
       }).join('');
+
+  // ── Resume version performance ───────────────────────────────────────────
+  const resumeMap = {};
+  jobs.forEach(j => {
+    const v = (j.resumeVersion || '').trim();
+    if (!v) return;
+    if (!resumeMap[v]) resumeMap[v] = { total: 0, interviewed: 0, offered: 0 };
+    resumeMap[v].total++;
+    if (['interview', 'offer'].includes(j.status)) resumeMap[v].interviewed++;
+    if (j.status === 'offer') resumeMap[v].offered++;
+  });
+  const resumeEntries = Object.entries(resumeMap)
+    .map(([v, d]) => ({ v, ...d, rate: d.total ? Math.round(d.interviewed / d.total * 100) : 0 }))
+    .sort((a, b) => b.rate - a.rate || b.total - a.total);
+  const maxResumeRate = resumeEntries.length ? Math.max(...resumeEntries.map(e => e.rate), 1) : 1;
+  document.getElementById('resumeChart').innerHTML = resumeEntries.length
+    ? resumeEntries.map((e, i) => `
+        <div class="hbar-row">
+          <div class="hbar-label" style="${i === 0 ? 'color:#16a34a;font-weight:700' : ''}" title="${e.v}">📄 ${e.v.length > 14 ? e.v.slice(0, 13) + '…' : e.v}</div>
+          <div class="hbar-track"><div class="hbar-fill" style="width:${Math.round(e.rate / maxResumeRate * 100)}%;background:${i === 0 ? '#16a34a' : '#2563eb'}"></div></div>
+          <div class="hbar-count">${e.rate}%</div>
+        </div>
+        <div style="font-size:10px;color:#94a3b8;margin:-8px 0 10px 86px">${e.total} app${e.total !== 1 ? 's' : ''} · ${e.interviewed} interview${e.interviewed !== 1 ? 's' : ''}${e.offered ? ` · ${e.offered} offer${e.offered !== 1 ? 's' : ''}` : ''}</div>`)
+      .join('')
+    : '<div style="font-size:12px;color:#94a3b8">Add a resume version to your jobs to see performance data</div>';
 }
