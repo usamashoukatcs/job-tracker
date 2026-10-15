@@ -218,12 +218,40 @@ function setFilter(f, clickedEl) {
   renderJobs();
 }
 
+function needsAttention(j) {
+  const now = Date.now();
+  // stale: applied/interview with no activity 14+ days
+  const lastActivity = (() => {
+    if (j.events && j.events.length) return j.events[j.events.length - 1].date;
+    return j.statusUpdated || j.appliedDate;
+  })();
+  if (['applied', 'interview'].includes(j.status) && (now - new Date(lastActivity).getTime()) / 86400000 >= 14) return true;
+  // custom follow-up due or overdue
+  if (j.followupDate) {
+    const diff = Math.round((new Date(j.followupDate) - now) / 86400000);
+    if (diff <= 0 && diff >= -30) return true;
+  }
+  // email follow-up overdue
+  if (j.applicationMethod === 'email' && j.status === 'applied' && !j.followUpSent) {
+    const daysAgo = (now - new Date(j.appliedDate).getTime()) / 86400000;
+    if (daysAgo >= 7) return true;
+  }
+  // interview today or tomorrow
+  if (j.interviewDate) {
+    const diff = Math.round((new Date(j.interviewDate) - now) / 86400000);
+    if (diff >= 0 && diff <= 1) return true;
+  }
+  return false;
+}
+
 function getFiltered() {
   let jobs = [...allJobs];
   if (currentFilter === 'all') {
-    jobs = jobs.filter(j => j.status !== 'archived'); // archive view is separate
+    jobs = jobs.filter(j => j.status !== 'archived');
   } else if (currentFilter === 'email') {
     jobs = jobs.filter(j => j.applicationMethod === 'email' && j.status !== 'archived');
+  } else if (currentFilter === 'attention') {
+    jobs = jobs.filter(j => j.status !== 'archived' && needsAttention(j));
   } else {
     jobs = jobs.filter(j => j.status === currentFilter);
   }
@@ -388,6 +416,17 @@ function renderOfferCompare() {
 
 function renderJobs() {
   renderOfferCompare();
+  // Update attention badge count
+  const attentionN = allJobs.filter(j => j.status !== 'archived' && needsAttention(j)).length;
+  const countEl = document.getElementById('attentionCount');
+  if (countEl) countEl.textContent = attentionN > 0 ? `(${attentionN})` : '';
+  const tabEl = document.getElementById('attentionTab');
+  if (tabEl) {
+    tabEl.style.background = currentFilter === 'attention' ? '#d97706' : attentionN > 0 ? '#fef3c7' : '';
+    tabEl.style.borderColor = attentionN > 0 ? '#fcd34d' : '';
+    tabEl.style.color = currentFilter === 'attention' ? '#fff' : attentionN > 0 ? '#92400e' : '';
+    tabEl.style.display = attentionN > 0 || currentFilter === 'attention' ? '' : 'none';
+  }
   const jobs = getFiltered();
   const grid = document.getElementById('jobsGrid');
 
