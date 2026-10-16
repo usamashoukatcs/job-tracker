@@ -333,6 +333,8 @@ function renderKanban() {
   const search = currentSearch.toLowerCase();
   const board = document.getElementById('kanbanBoard');
 
+  let dragJobId = null;
+
   board.innerHTML = COLS.map(col => {
     let jobs = allJobs.filter(j => j.status === col.status);
     if (search) {
@@ -349,7 +351,7 @@ function renderKanban() {
           const days = daysSince(j.appliedDate);
           const daysLabel = days === 0 ? 'today' : days === 1 ? '1 day ago' : `${days}d ago`;
           return `
-            <div class="kanban-card" data-job-id="${j.id}">
+            <div class="kanban-card" draggable="true" data-job-id="${j.id}">
               <div class="kanban-card-top">
                 <div class="kanban-card-title">${j.title}</div>
               </div>
@@ -378,9 +380,35 @@ function renderKanban() {
           </span>
           <span class="kanban-count">${jobs.length}</span>
         </div>
-        <div class="kanban-cards">${cards}</div>
+        <div class="kanban-cards" data-drop-status="${col.status}">${cards}</div>
       </div>`;
   }).join('');
+
+  // Drag-and-drop
+  board.querySelectorAll('.kanban-card[draggable]').forEach(card => {
+    card.addEventListener('dragstart', e => {
+      dragJobId = card.dataset.jobId;
+      card.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    card.addEventListener('dragend', () => card.classList.remove('dragging'));
+  });
+
+  board.querySelectorAll('.kanban-cards[data-drop-status]').forEach(zone => {
+    zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+    zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+    zone.addEventListener('drop', async e => {
+      e.preventDefault();
+      zone.classList.remove('drag-over');
+      const targetStatus = zone.dataset.dropStatus;
+      if (!dragJobId || !targetStatus) return;
+      const job = allJobs.find(j => j.id === dragJobId);
+      if (!job || job.status === targetStatus) return;
+      await send('UPDATE_JOB', { id: dragJobId, updates: { status: targetStatus, statusUpdated: new Date().toISOString() } });
+      dragJobId = null;
+      await reload();
+    });
+  });
 }
 
 function setViewMode(mode) {
