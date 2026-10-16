@@ -526,20 +526,19 @@ function renderJobs() {
             const diff = Math.round((new Date(j.interviewDate) - Date.now()) / 86400000);
             if (diff < -1) return '';
             const label = diff < 0 ? 'was yesterday' : diff === 0 ? 'is today!' : diff === 1 ? 'is tomorrow' : `in ${diff} days`;
-            const bg = diff <= 1 ? '#dcfce7' : '#dbeafe';
-            const col = diff <= 1 ? '#15803d' : '#1d4ed8';
-            return `<div style="background:${bg};border:1px solid;border-color:${bg};border-radius:6px;padding:7px 10px;font-size:12px;color:${col};font-weight:600;margin-bottom:10px">📅 Interview ${label}</div>`;
+            const cls = diff <= 1 ? 'alert-strip alert-green' : 'alert-strip alert-blue';
+            return `<div class="${cls}" style="font-weight:600">📅 Interview ${label}</div>`;
           })()}
           ${(function() {
             if (!j.followupDate) return '';
             const diff = Math.round((new Date(j.followupDate) - Date.now()) / 86400000);
             if (diff < -30) return '';
-            if (diff < 0)  return `<div style="background:#fee2e2;border:1px solid #fca5a5;border-radius:6px;padding:7px 10px;font-size:12px;color:#b91c1c;font-weight:600;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between">📌 Follow-up overdue by ${Math.abs(diff)}d<button class="card-btn" data-action="clear-followup" data-job-id="${j.id}" style="font-size:11px;padding:2px 8px;margin:0">Clear</button></div>`;
-            if (diff === 0) return `<div style="background:#dcfce7;border:1px solid #86efac;border-radius:6px;padding:7px 10px;font-size:12px;color:#15803d;font-weight:600;margin-bottom:10px">📌 Follow-up due today!</div>`;
-            return `<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:6px;padding:7px 10px;font-size:12px;color:#1d4ed8;margin-bottom:10px">📌 Follow-up in ${diff}d — ${new Date(j.followupDate).toLocaleDateString('en-US',{month:'short',day:'numeric'})}</div>`;
+            if (diff < 0)  return `<div class="alert-strip alert-red" style="display:flex;align-items:center;justify-content:space-between;font-weight:600">📌 Follow-up overdue by ${Math.abs(diff)}d<button class="card-btn" data-action="clear-followup" data-job-id="${j.id}" style="font-size:11px;padding:2px 8px;margin:0">Clear</button></div>`;
+            if (diff === 0) return `<div class="alert-strip alert-green" style="font-weight:600">📌 Follow-up due today!</div>`;
+            return `<div class="alert-strip alert-blue">📌 Follow-up in ${diff}d — ${new Date(j.followupDate).toLocaleDateString('en-US',{month:'short',day:'numeric'})}</div>`;
           })()}
-          ${stale ? `<div style="background:#fef3c7;border:1px solid #fcd34d;border-radius:6px;padding:7px 10px;font-size:12px;color:#92400e;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between">🕰 No activity for ${daysSince(lastActivityDate)} days<button class="card-btn" data-action="archive-stale" data-job-id="${j.id}" style="font-size:11px;padding:2px 8px;margin:0">Archive</button></div>` : ''}
-          ${followupDue ? `<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:7px 10px;font-size:12px;color:#92400e;margin-bottom:10px">⏰ Follow-up overdue — ${daysAgo} days with no response</div>` : ''}
+          ${stale ? `<div class="alert-strip alert-yellow" style="display:flex;align-items:center;justify-content:space-between">🕰 No activity for ${daysSince(lastActivityDate)} days<button class="card-btn" data-action="archive-stale" data-job-id="${j.id}" style="font-size:11px;padding:2px 8px;margin:0">Archive</button></div>` : ''}
+          ${followupDue ? `<div class="alert-strip alert-yellow">⏰ Follow-up overdue — ${daysAgo} days with no response</div>` : ''}
           ${j.notes ? `<div class="card-notes">${j.notes}</div>` : ''}
           ${j.jobDescription ? `
             <span class="card-prep-toggle" data-jd-id="${j.id}">📄 Job Description ▾</span>
