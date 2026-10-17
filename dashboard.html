@@ -1441,6 +1441,10 @@ body[data-theme="dark"] .tl-note { color: #94a3b8; }
   </select>
   <button class="bulk-btn bulk-btn-archive" id="bulkArchiveBtn">Archive</button>
   <button class="bulk-btn bulk-btn-danger"  id="bulkDeleteBtn">Delete</button>
+  <div id="bulkTagWrap" style="display:inline-flex;align-items:center;gap:4px">
+    <input id="bulkTagInput" class="bulk-btn" placeholder="Add tag…" style="width:96px;cursor:text" maxlength="30">
+    <button class="bulk-btn" id="bulkTagBtn" title="Add tag to all selected">🏷 Tag</button>
+  </div>
   <button class="bulk-btn bulk-btn-ghost"   id="bulkCancelBtn">Cancel</button>
 </div>
 <!-- Keyboard shortcuts modal -->

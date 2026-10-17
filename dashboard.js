@@ -873,6 +873,24 @@ document.addEventListener('DOMContentLoaded', () => {
     await reload();
   });
   document.getElementById('bulkCancelBtn').addEventListener('click', clearSelection);
+
+  // Bulk tag
+  async function applyBulkTag() {
+    const raw = document.getElementById('bulkTagInput').value.trim().toLowerCase().replace(/\s+/g, '-');
+    if (!raw) return;
+    const ids = [...selectedIds];
+    for (const id of ids) {
+      const job = allJobs.find(j => j.id === id);
+      if (!job) continue;
+      const tags = [...new Set([...(job.tags || []), raw])];
+      await send('UPDATE_JOB', { id, updates: { tags } });
+    }
+    document.getElementById('bulkTagInput').value = '';
+    showToast(`Tag #${raw} added to ${ids.length} job${ids.length !== 1 ? 's' : ''}`, 'success');
+    await reload();
+  }
+  document.getElementById('bulkTagBtn').addEventListener('click', applyBulkTag);
+  document.getElementById('bulkTagInput').addEventListener('keydown', e => { if (e.key === 'Enter') applyBulkTag(); });
   document.getElementById('bulkStatusSelect').addEventListener('change', async e => {
     const status = e.target.value;
     if (!status) return;
