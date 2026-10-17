@@ -850,6 +850,8 @@ body[data-theme="dark"] .main-tab { color: #94a3b8; }
 body[data-theme="dark"] .main-tab:hover { color: #60a5fa; }
 body[data-theme="dark"] .main-tab.active { color: #60a5fa; border-bottom-color: #3b82f6; }
 body[data-theme="dark"] #wishlistHeading { color: #f1f5f9; }
+body[data-theme="dark"] #notesHeading { color: #f1f5f9; }
+body[data-theme="dark"] #notesArea { background:#1e293b;border-color:#334155;color:#e2e8f0; }
 body[data-theme="dark"] .alert-strip.alert-yellow { background:#422006;border-color:#92400e;color:#fcd34d; }
 body[data-theme="dark"] .alert-strip.alert-red    { background:#450a0a;border-color:#b91c1c;color:#fca5a5; }
 body[data-theme="dark"] .alert-strip.alert-green  { background:#052e16;border-color:#15803d;color:#86efac; }
@@ -1047,6 +1049,7 @@ body[data-theme="dark"] .tl-note { color: #94a3b8; }
     <button class="main-tab" id="tabFinder">🔍 Find Jobs</button>
     <button class="main-tab" id="tabStats">📊 Stats</button>
     <button class="main-tab" id="tabWishlist">⭐ Wishlist</button>
+    <button class="main-tab" id="tabNotes">📝 Notes</button>
   </div>
 
   <!-- ── Tracker panel ────────────────────────────────────────────── -->
@@ -1275,6 +1278,18 @@ body[data-theme="dark"] .tl-note { color: #94a3b8; }
     </div>
   </div>
 
+  <!-- ── Notes / Journal panel ───────────────────────────────────── -->
+  <div id="notesPanel" style="display:none;padding:20px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <div>
+        <div style="font-size:16px;font-weight:700;color:#1e293b" id="notesHeading">📝 Job Search Journal</div>
+        <div style="font-size:12px;color:#94a3b8;margin-top:2px">Freeform notes — lessons, goals, reflections. Auto-saved.</div>
+      </div>
+      <span id="notesSavedLabel" style="font-size:11px;color:#94a3b8"></span>
+    </div>
+    <textarea id="notesArea" placeholder="Write anything here — interview lessons, companies to research, goals for the week, what's working and what isn't…" style="width:100%;min-height:320px;padding:14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:13px;line-height:1.7;resize:vertical;font-family:inherit;box-sizing:border-box"></textarea>
+  </div>
+
   <!-- ── Wishlist panel ───────────────────────────────────────────── -->
   <div id="wishlistPanel" style="display:none;padding:20px">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
@@ -1443,6 +1458,7 @@ body[data-theme="dark"] .tl-note { color: #94a3b8; }
           <tr><td><kbd>2</kbd></td><td>Find Jobs tab</td></tr>
           <tr><td><kbd>3</kbd></td><td>Stats tab</td></tr>
           <tr><td><kbd>4</kbd></td><td>Wishlist tab</td></tr>
+          <tr><td><kbd>5</kbd></td><td>Notes tab</td></tr>
           <tr><td style="padding:7px 0;color:#64748b">Actions</td><td></td></tr>
           <tr><td><kbd>A</kbd></td><td>Add a new job</td></tr>
           <tr><td><kbd>/</kbd></td><td>Focus search bar</td></tr>

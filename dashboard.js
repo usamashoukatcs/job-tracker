@@ -1055,6 +1055,8 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('tabTracker').addEventListener('click',  () => switchTab('tracker'));
   document.getElementById('tabFinder').addEventListener('click',   () => switchTab('finder'));
   document.getElementById('tabWishlist').addEventListener('click', () => switchTab('wishlist'));
+  document.getElementById('tabNotes').addEventListener('click',    () => switchTab('notes'));
+  document.getElementById('notesArea').addEventListener('input', scheduleNotesSave);
 
   // Wishlist modal
   document.getElementById('addWishlistBtn').addEventListener('click', openWishlistModal);
@@ -1294,6 +1296,7 @@ document.addEventListener('DOMContentLoaded', () => {
       case '2': switchTab('finder');   break;
       case '3': switchTab('stats');    break;
       case '4': switchTab('wishlist'); break;
+      case '5': switchTab('notes');   break;
       case 'a': if (!modalOpen) openAddModal(); break;
       case '/':
         e.preventDefault();
@@ -1392,15 +1395,35 @@ function switchTab(tab) {
   document.getElementById('tabFinder').classList.toggle('active',   tab === 'finder');
   document.getElementById('tabStats').classList.toggle('active',    tab === 'stats');
   document.getElementById('tabWishlist').classList.toggle('active', tab === 'wishlist');
+  document.getElementById('tabNotes').classList.toggle('active',    tab === 'notes');
   document.getElementById('trackerPanel').style.display   = tab === 'tracker'  ? '' : 'none';
   document.getElementById('trackerSearch').style.display  = tab === 'tracker'  ? '' : 'none';
   document.getElementById('finderPanel').style.display    = tab === 'finder'   ? '' : 'none';
   document.getElementById('statsPanel').style.display     = tab === 'stats'    ? '' : 'none';
   document.getElementById('wishlistPanel').style.display  = tab === 'wishlist' ? '' : 'none';
+  document.getElementById('notesPanel').style.display     = tab === 'notes'    ? '' : 'none';
   if (tab !== 'tracker') clearSelection();
   if (tab === 'finder')   loadFinderJobs();
   if (tab === 'stats')    renderAnalytics();
   if (tab === 'wishlist') renderWishlist();
+  if (tab === 'notes')    loadNotes();
+}
+
+async function loadNotes() {
+  const r = await chrome.storage.local.get('journalNotes');
+  const area = document.getElementById('notesArea');
+  if (area) area.value = r.journalNotes || '';
+}
+
+let notesSaveTimer = null;
+function scheduleNotesSave() {
+  clearTimeout(notesSaveTimer);
+  notesSaveTimer = setTimeout(async () => {
+    const text = document.getElementById('notesArea').value;
+    await chrome.storage.local.set({ journalNotes: text });
+    const lbl = document.getElementById('notesSavedLabel');
+    if (lbl) { lbl.textContent = 'Saved ✓'; setTimeout(() => { lbl.textContent = ''; }, 2000); }
+  }, 800);
 }
 
 // ── Wishlist ─────────────────────────────────────────────────────────────────
