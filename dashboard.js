@@ -152,24 +152,32 @@ function parseCsvToJobs(text) {
   }).filter(Boolean);
 }
 
-function exportCsv() {
-  if (!allJobs.length) { showToast('No jobs to export yet.', 'error'); return; }
-  const headers = ['Title', 'Company', 'Status', 'Applied Date', 'Method', 'URL', 'Notes'];
-  const rows = allJobs.map(j => [
+function exportCsv(jobsToExport) {
+  const jobs = jobsToExport || allJobs;
+  if (!jobs.length) { showToast('No jobs to export.', 'error'); return; }
+  const headers = ['Title', 'Company', 'Status', 'Applied Date', 'Method', 'URL', 'Salary', 'Resume Version', 'Recruiter', 'Recruiter LinkedIn', 'Tags', 'Notes', 'Prep Notes'];
+  const rows = jobs.map(j => [
     j.title || '',
     j.company || '',
     j.status || '',
     j.appliedDate ? new Date(j.appliedDate).toLocaleDateString('en-US') : '',
     j.applicationMethod || '',
     j.url || '',
+    j.salary || '',
+    j.resumeVersion || '',
+    j.recruiterName || '',
+    j.recruiterLinkedin || '',
+    (j.tags || []).join('; '),
     (j.notes || '').replace(/\r?\n/g, ' '),
+    (j.prepNotes || '').replace(/\r?\n/g, ' '),
   ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(','));
   const csv = [headers.join(','), ...rows].join('\n');
   const blob = new Blob([csv], { type: 'text/csv' });
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement('a');
   a.href     = url;
-  a.download = `job-applications-${new Date().toISOString().split('T')[0]}.csv`;
+  const label = jobsToExport ? currentFilter : 'all';
+  a.download = `jobs-${label}-${new Date().toISOString().split('T')[0]}.csv`;
   a.click();
   URL.revokeObjectURL(url);
 }
@@ -792,7 +800,18 @@ document.addEventListener('DOMContentLoaded', () => {
   const savedTheme = localStorage.getItem('darkMode') || 'light';
   document.getElementById('darkModeBtn').textContent = savedTheme === 'dark' ? '☀️' : '🌙';
   document.getElementById('darkModeBtn').addEventListener('click', toggleDarkMode);
-  document.getElementById('exportCsvBtn').addEventListener('click', exportCsv);
+  document.getElementById('exportCsvBtn').addEventListener('click', () => {
+    const filtered = getFiltered();
+    if (currentFilter !== 'all' && filtered.length < allJobs.length) {
+      if (confirm(`Export ${filtered.length} visible job${filtered.length !== 1 ? 's' : ''} (current filter: "${currentFilter}")?\n\nCancel to export all ${allJobs.length} jobs instead.`)) {
+        exportCsv(filtered);
+      } else {
+        exportCsv();
+      }
+    } else {
+      exportCsv();
+    }
+  });
 
   // Import CSV
   document.getElementById('importCsvBtn').addEventListener('click', () => {
