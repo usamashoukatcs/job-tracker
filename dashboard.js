@@ -1954,6 +1954,13 @@ function renderAnalytics() {
     ? Math.round(responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length)
     : null;
 
+  const offerTimes = jobs
+    .filter(j => j.status === 'offer' && j.appliedDate && j.statusUpdated)
+    .map(j => Math.max(0, Math.round((new Date(j.statusUpdated) - new Date(j.appliedDate)) / 86400000)));
+  const avgTimeToOffer = offerTimes.length
+    ? Math.round(offerTimes.reduce((a, b) => a + b, 0) / offerTimes.length)
+    : null;
+
   document.getElementById('kpiRow').innerHTML = `
     <div class="kpi-card kpi-clickable" data-kpi-filter="all" title="View all applications">
       <div class="kpi-value c-blue">${total}</div>
@@ -1989,6 +1996,11 @@ function renderAnalytics() {
       <div class="kpi-value ${avgResponse === null ? 'c-gray' : avgResponse <= 7 ? 'c-green' : avgResponse <= 14 ? 'c-yellow' : 'c-red'}">${avgResponse === null ? '—' : avgResponse + 'd'}</div>
       <div class="kpi-label">Avg Response</div>
       <div class="kpi-sub">${avgResponse === null ? 'No responses yet' : `across ${responseTimes.length} response${responseTimes.length !== 1 ? 's' : ''}`}</div>
+    </div>
+    <div class="kpi-card kpi-clickable" data-kpi-filter="offer" title="View offers">
+      <div class="kpi-value ${avgTimeToOffer === null ? 'c-gray' : avgTimeToOffer <= 21 ? 'c-green' : avgTimeToOffer <= 42 ? 'c-yellow' : 'c-red'}">${avgTimeToOffer === null ? '—' : avgTimeToOffer + 'd'}</div>
+      <div class="kpi-label">Avg to Offer</div>
+      <div class="kpi-sub">${avgTimeToOffer === null ? 'No offers yet' : `across ${offerTimes.length} offer${offerTimes.length !== 1 ? 's' : ''}`}</div>
     </div>
   `;
 
