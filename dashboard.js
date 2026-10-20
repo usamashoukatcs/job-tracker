@@ -1195,6 +1195,14 @@ document.addEventListener('DOMContentLoaded', () => {
     renderGoal();
   });
 
+  // Monthly goal input
+  document.getElementById('monthGoalInput')?.addEventListener('change', e => {
+    const v = Math.max(1, parseInt(e.target.value, 10) || 20);
+    e.target.value = v;
+    localStorage.setItem('monthlyGoal', v);
+    renderGoal();
+  });
+
   // Stats tab
   document.getElementById('tabStats').addEventListener('click', () => switchTab('stats'));
 
@@ -1943,6 +1951,30 @@ function renderGoal() {
   if (bar)     bar.style.background = pct >= 100 ? '#16a34a' : pct >= 60 ? '#2563eb' : '#f97316';
   if (label)   label.textContent = `${thisWeek} / ${goal} this week${pct >= 100 ? ' 🎉' : ''}`;
   if (trendEl) { trendEl.textContent = trend; trendEl.style.color = trendColor; }
+
+  // Monthly goal
+  const monthGoal = parseInt(localStorage.getItem('monthlyGoal') || '20', 10);
+  const monthInput = document.getElementById('monthGoalInput');
+  if (monthInput) monthInput.value = monthGoal;
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const thisMonth = allJobs.filter(j => j.appliedDate && new Date(j.appliedDate) >= monthStart).length;
+  const lastMonth = allJobs.filter(j => {
+    if (!j.appliedDate) return false;
+    const d = new Date(j.appliedDate);
+    return d >= lastMonthStart && d < monthStart;
+  }).length;
+  const monthDiff = thisMonth - lastMonth;
+  const monthTrend = lastMonth === 0 ? '' : monthDiff > 0 ? ` ↑${monthDiff}` : monthDiff < 0 ? ` ↓${Math.abs(monthDiff)}` : ' →';
+  const monthTrendColor = monthDiff > 0 ? '#16a34a' : monthDiff < 0 ? '#dc2626' : '#64748b';
+  const monthPct = Math.min(100, Math.round(thisMonth / monthGoal * 100));
+  const monthBar = document.getElementById('monthGoalBar');
+  const monthLabel = document.getElementById('monthGoalLabel');
+  const monthTrendEl = document.getElementById('monthGoalTrend');
+  const monthName = now.toLocaleDateString('en-US', { month: 'long' });
+  if (monthBar)     { monthBar.style.width = monthPct + '%'; monthBar.style.background = monthPct >= 100 ? '#16a34a' : monthPct >= 60 ? '#2563eb' : '#f97316'; }
+  if (monthLabel)   monthLabel.textContent = `${thisMonth} / ${monthGoal} in ${monthName}${monthPct >= 100 ? ' 🎉' : ''}`;
+  if (monthTrendEl) { monthTrendEl.textContent = monthTrend; monthTrendEl.style.color = monthTrendColor; }
 }
 
 function calcStreak(jobs) {

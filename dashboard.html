@@ -1017,6 +1017,7 @@ body[data-theme="dark"] #searchSettingsPanel textarea {
 }
 body[data-theme="dark"] #goalCard { background: #1e293b; border-color: #334155; }
 body[data-theme="dark"] #goalInput { background: #0f172a; border-color: #334155; color: #e2e8f0; }
+body[data-theme="dark"] #monthGoalInput { background: #0f172a; border-color: #334155; color: #e2e8f0; }
 .reason-chips { display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 12px; }
 .reason-chip { padding:6px 14px;border:1.5px solid #e2e8f0;border-radius:20px;font-size:13px;cursor:pointer;background:#fff;color:#475569;transition:all .15s; }
 .reason-chip:hover,.reason-chip.selected { background:#2563eb;border-color:#2563eb;color:#fff; }
@@ -1238,6 +1239,26 @@ body[data-theme="dark"] .tl-note { color: #94a3b8; }
         <input id="goalInput" type="number" min="1" max="99" value="5"
           style="width:52px;padding:5px 8px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:13px;font-weight:700;text-align:center;outline:none">
         <span style="font-size:12px;color:#94a3b8">/ week</span>
+      </div>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:16px 20px" id="monthGoalCard">
+      <span style="font-size:22px">📅</span>
+      <div style="flex:1">
+        <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#64748b;margin-bottom:6px">Monthly Application Goal</div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="flex:1;height:10px;background:#f1f5f9;border-radius:5px;overflow:hidden">
+            <div id="monthGoalBar" style="height:10px;border-radius:5px;background:#2563eb;transition:width .4s"></div>
+          </div>
+          <span id="monthGoalLabel" style="font-size:13px;font-weight:700;color:#475569;white-space:nowrap"></span>
+          <span id="monthGoalTrend" style="font-size:12px;font-weight:700;white-space:nowrap" title="vs last month"></span>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+        <span style="font-size:12px;color:#94a3b8">Goal:</span>
+        <input id="monthGoalInput" type="number" min="1" max="999" value="20"
+          style="width:52px;padding:5px 8px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:13px;font-weight:700;text-align:center;outline:none">
+        <span style="font-size:12px;color:#94a3b8">/ month</span>
       </div>
     </div>
 
