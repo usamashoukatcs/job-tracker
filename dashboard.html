@@ -1017,6 +1017,12 @@ body[data-theme="dark"] #searchSettingsPanel textarea {
 }
 body[data-theme="dark"] #goalCard { background: #1e293b; border-color: #334155; }
 body[data-theme="dark"] #goalInput { background: #0f172a; border-color: #334155; color: #e2e8f0; }
+.reason-chips { display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 12px; }
+.reason-chip { padding:6px 14px;border:1.5px solid #e2e8f0;border-radius:20px;font-size:13px;cursor:pointer;background:#fff;color:#475569;transition:all .15s; }
+.reason-chip:hover,.reason-chip.selected { background:#2563eb;border-color:#2563eb;color:#fff; }
+body[data-theme="dark"] .reason-chip { background:#1e293b;border-color:#334155;color:#94a3b8; }
+body[data-theme="dark"] .reason-chip:hover,body[data-theme="dark"] .reason-chip.selected { background:#2563eb;border-color:#2563eb;color:#fff; }
+body[data-theme="dark"] #reasonCustom { background:#0f172a;border-color:#334155;color:#e2e8f0; }
 body[data-theme="dark"] .empty-state .es-text { color: #94a3b8; }
 body[data-theme="dark"] .empty-state .es-sub { color: #64748b; }
 body[data-theme="dark"] .timeline-title { color: #64748b; }
@@ -1424,6 +1430,24 @@ body[data-theme="dark"] .tl-note { color: #94a3b8; }
         <button class="btn btn-primary" id="openMailtoBtn">📧 Open in Email App</button>
         <button class="btn btn-ghost" id="markSentBtn">✓ Mark as Sent</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="reasonModal" style="display:none">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-header">
+      <div class="modal-title" id="reasonModalTitle">Why was this rejected?</div>
+      <button class="modal-close" id="closeReasonBtn">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="reason-chips" id="reasonChips"></div>
+      <input id="reasonCustom" type="text" placeholder="Or type a custom reason…"
+        style="width:100%;padding:8px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:13px;box-sizing:border-box;outline:none">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" id="skipReasonBtn">Skip</button>
+      <button class="btn btn-primary" id="saveReasonBtn">Save Reason</button>
     </div>
   </div>
 </div>

@@ -34,6 +34,11 @@ const DEFAULT_KEYWORDS = [
   'platform engineer',
 ].join('\n');
 
+const REASON_OPTIONS = {
+  rejected: ['Not selected', 'Overqualified', 'Under-qualified', 'Salary mismatch', 'Role cancelled', 'Better candidate chosen'],
+  ghosted:  ['No response after apply', 'No response after interview', 'Recruiter went silent', 'Company stopped responding'],
+};
+
 const STATUS_BADGE = {
   applied: 'badge-applied', interview: 'badge-interview', rejected: 'badge-rejected',
   offer: 'badge-offer', ghosted: 'badge-ghosted', archived: 'badge-archived'
@@ -547,6 +552,7 @@ function renderJobs() {
           })()}
           ${stale ? `<div class="alert-strip alert-yellow" style="display:flex;align-items:center;justify-content:space-between">🕰 No activity for ${daysSince(lastActivityDate)} days<button class="card-btn" data-action="archive-stale" data-job-id="${j.id}" style="font-size:11px;padding:2px 8px;margin:0">Archive</button></div>` : ''}
           ${followupDue ? `<div class="alert-strip alert-yellow">⏰ Follow-up overdue — ${daysAgo} days with no response</div>` : ''}
+          ${j.statusReason ? `<div style="font-size:12px;color:#94a3b8;font-style:italic;padding:0 16px 6px">↳ ${j.statusReason}</div>` : ''}
           ${j.notes ? `<div class="card-notes">${j.notes}</div>` : ''}
           ${j.jobDescription ? `
             <span class="card-prep-toggle" data-jd-id="${j.id}">📄 Job Description ▾</span>
@@ -593,6 +599,43 @@ async function quickStatus(id, status) {
     showToast('🎉 Congratulations on the offer!', 'success');
   }
   await reload();
+  if (status === 'rejected' || status === 'ghosted') promptStatusReason(id, status);
+}
+
+function promptStatusReason(jobId, status) {
+  if (!REASON_OPTIONS[status]) return;
+  const modal = document.getElementById('reasonModal');
+  const chipsEl = document.getElementById('reasonChips');
+  const custom = document.getElementById('reasonCustom');
+  document.getElementById('reasonModalTitle').textContent =
+    status === 'rejected' ? 'Why was this rejected?' : 'Why did this go quiet?';
+  custom.value = '';
+  let selected = '';
+  chipsEl.innerHTML = REASON_OPTIONS[status].map(r =>
+    `<button class="reason-chip" data-reason="${r}">${r}</button>`
+  ).join('');
+  chipsEl.querySelectorAll('.reason-chip').forEach(btn => {
+    btn.addEventListener('click', () => {
+      chipsEl.querySelectorAll('.reason-chip').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      selected = btn.dataset.reason;
+      custom.value = '';
+    });
+  });
+  modal.style.display = 'flex';
+  const close = () => { modal.style.display = 'none'; };
+  const save = async () => {
+    const reason = custom.value.trim() || selected;
+    if (reason) {
+      await send('UPDATE_JOB', { id: jobId, updates: { statusReason: reason } });
+      await reload();
+    }
+    close();
+  };
+  document.getElementById('saveReasonBtn').onclick = save;
+  document.getElementById('skipReasonBtn').onclick = close;
+  document.getElementById('closeReasonBtn').onclick = close;
+  modal.onclick = e => { if (e.target === modal) close(); };
 }
 
 async function submitQuickNote(jobId, input) {
