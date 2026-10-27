@@ -286,8 +286,9 @@ function getFiltered() {
     case 'company':   jobs.sort((a, b) => (a.company || '').localeCompare(b.company || '')); break;
     case 'status':    jobs.sort((a, b) => (STATUS_ORDER[a.status] ?? 9) - (STATUS_ORDER[b.status] ?? 9)); break;
     case 'priority':  jobs.sort((a, b) => (b.priority || 0) - (a.priority || 0)); break;
-    case 'interest':  jobs.sort((a, b) => (b.interest || 0) - (a.interest || 0)); break;
-    default:          jobs.sort((a, b) => new Date(b.appliedDate) - new Date(a.appliedDate)); break;
+    case 'interest':    jobs.sort((a, b) => (b.interest || 0) - (a.interest || 0)); break;
+    case 'confidence':  jobs.sort((a, b) => (b.confidence || 0) - (a.confidence || 0)); break;
+    default:            jobs.sort((a, b) => new Date(b.appliedDate) - new Date(a.appliedDate)); break;
   }
   return jobs;
 }
@@ -517,6 +518,7 @@ function renderJobs() {
             <div class="card-company">${j.company}</div>
             <div class="priority-stars" data-job-id="${j.id}">${[1,2,3].map(n => `<span class="pstar${(j.priority||0) >= n ? ' pstar-on' : ''}" data-star="${n}" title="${n === 1 ? 'Low' : n === 2 ? 'Medium' : 'High'} priority">★</span>`).join('')}</div>
             <div class="interest-hearts" data-job-id="${j.id}">${[1,2,3,4,5].map(n => `<span class="iheart${(j.interest||0) >= n ? ' iheart-on' : ''}" data-heart="${n}" title="${n === 1 ? 'Meh' : n === 2 ? 'OK' : n === 3 ? 'Like' : n === 4 ? 'Want' : 'Dream job'}">♥</span>`).join('')}</div>
+            <div class="conf-emojis" data-job-id="${j.id}">${['😬','😐','🙂','😊','🚀'].map((em,i) => `<span class="cemoji${(j.confidence||0) >= i+1 ? ' cemoji-on' : ''}" data-conf="${i+1}" title="${['Low','Uncertain','Neutral','Hopeful','Very confident'][i]}">${em}</span>`).join('')}</div>
           </div>
           <div class="card-badge">
             <span class="badge ${STATUS_BADGE[j.status] || 'badge-applied'}">${j.status}</span>
@@ -899,6 +901,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   document.getElementById('addJobBtn').addEventListener('click', () => openAddModal());
 
+
   // Stat cards (event delegation by data-filter)
   document.getElementById('statsRow').addEventListener('click', e => {
     const card = e.target.closest('.stat-card[data-filter]');
@@ -1014,6 +1017,20 @@ document.addEventListener('DOMContentLoaded', () => {
     await reload();
   });
 
+  // Confidence emojis
+  document.getElementById('jobsGrid').addEventListener('click', async e => {
+    const emoji = e.target.closest('.cemoji');
+    if (!emoji) return;
+    const wrap = emoji.closest('.conf-emojis');
+    const jobId = wrap?.dataset.jobId;
+    if (!jobId) return;
+    const n = parseInt(emoji.dataset.conf, 10);
+    const job = allJobs.find(j => j.id === jobId);
+    const newConf = job && job.confidence === n ? 0 : n;
+    await send('UPDATE_JOB', { id: jobId, updates: { confidence: newConf } });
+    await reload();
+  });
+
   // Quick inline note: submit on ✓ click
   document.getElementById('jobsGrid').addEventListener('click', async e => {
     const btn = e.target.closest('.quick-note-submit');
@@ -1036,6 +1053,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('jobsGrid').addEventListener('click', e => {
     if (e.target.closest('.pstar'))   return;
     if (e.target.closest('.iheart'))  return;
+    if (e.target.closest('.cemoji'))  return;
     if (e.target.closest('.quick-note-submit')) return;
     if (e.target.closest('.card-prep-toggle')) return;
     if (e.target.closest('.card-tag')) return;

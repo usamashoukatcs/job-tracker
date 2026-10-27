@@ -217,6 +217,11 @@ body {
 .iheart:hover, .iheart-on { color: #f43f5e; }
 .interest-hearts:hover .iheart { color: #fb7185; }
 .interest-hearts:hover .iheart ~ .iheart { color: #cbd5e1; }
+.conf-emojis { display: flex; gap: 3px; margin-top: 3px; }
+.cemoji { font-size: 14px; cursor: pointer; line-height: 1; opacity: .3; transition: opacity .1s; user-select: none; }
+.cemoji:hover, .cemoji-on { opacity: 1; }
+.conf-emojis:hover .cemoji { opacity: .6; }
+.conf-emojis:hover .cemoji ~ .cemoji { opacity: .3; }
 .card-badge { flex-shrink: 0; }
 
 .badge {
@@ -886,6 +891,7 @@ body[data-theme="dark"] .priority-stars:hover .pstar { color: #fbbf24; }
 body[data-theme="dark"] .iheart { color: #475569; }
 body[data-theme="dark"] .iheart:hover, body[data-theme="dark"] .iheart-on { color: #f43f5e; }
 body[data-theme="dark"] .interest-hearts:hover .iheart { color: #fb7185; }
+body[data-theme="dark"] .cemoji { opacity: .2; }
 body[data-theme="dark"] .priority-stars:hover .pstar ~ .pstar { color: #475569; }
 body[data-theme="dark"] .card-meta { color: #64748b; }
 body[data-theme="dark"] .card-avatar { background: #1e3a8a; color: #93c5fd; }
@@ -1133,6 +1139,7 @@ body[data-theme="dark"] .tl-note { color: #94a3b8; }
         <option value="status">By status</option>
         <option value="priority">By priority ★</option>
         <option value="interest">By interest ♥</option>
+        <option value="confidence">By confidence 🚀</option>
       </select>
     </div>
   </div>
