@@ -901,6 +901,34 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   document.getElementById('addJobBtn').addEventListener('click', () => openAddModal());
 
+  // Print button
+  document.getElementById('printBtn').addEventListener('click', () => {
+    const jobs = getFiltered();
+    const date = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    const label = currentFilter === 'all' ? 'All Applications' : currentFilter.charAt(0).toUpperCase() + currentFilter.slice(1);
+    const CONF_LABELS = ['', '😬 Low', '😐 Uncertain', '🙂 Neutral', '😊 Hopeful', '🚀 Very confident'];
+    document.getElementById('printView').innerHTML = `
+      <h2>${label} (${jobs.length}) &nbsp;<span style="font-weight:400;color:#555">${date}</span></h2>
+      <table>
+        <thead><tr>
+          <th>#</th><th>Company</th><th>Title</th><th>Status</th>
+          <th>Applied</th><th>Method</th><th>Salary</th><th>Confidence</th><th>Notes</th>
+        </tr></thead>
+        <tbody>${jobs.map((j, i) => `<tr>
+          <td>${i + 1}</td>
+          <td>${j.company}</td>
+          <td>${j.title}</td>
+          <td>${j.status}${j.statusReason ? `<br><span style="color:#888;font-size:10px">${j.statusReason}</span>` : ''}</td>
+          <td>${j.appliedDate ? new Date(j.appliedDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''}</td>
+          <td>${j.applicationMethod || ''}</td>
+          <td>${j.salary || ''}</td>
+          <td>${CONF_LABELS[j.confidence || 0] || ''}</td>
+          <td class="pr-notes">${j.notes ? j.notes.slice(0, 100) + (j.notes.length > 100 ? '…' : '') : ''}</td>
+        </tr>`).join('')}</tbody>
+      </table>`;
+    window.print();
+  });
+
 
   // Stat cards (event delegation by data-filter)
   document.getElementById('statsRow').addEventListener('click', e => {

@@ -1037,6 +1037,15 @@ body[data-theme="dark"] .quick-note-input { background: #0f172a; border-color: #
 body[data-theme="dark"] .quick-note-input:focus { border-color: #3b82f6; background: #1e293b; }
 body[data-theme="dark"] .tl-date { color: #64748b; }
 body[data-theme="dark"] .tl-note { color: #94a3b8; }
+@media print {
+  body > *:not(#printView) { display: none !important; }
+  #printView { display: block !important; font-family: sans-serif; color: #000; }
+  #printView h2 { font-size: 15px; margin: 0 0 12px; }
+  #printView table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  #printView th { background: #f1f5f9; padding: 6px 8px; text-align: left; border-bottom: 2px solid #cbd5e1; }
+  #printView td { padding: 5px 8px; border-bottom: 1px solid #e2e8f0; vertical-align: top; }
+  #printView .pr-notes { color: #555; font-style: italic; max-width: 200px; }
+}
 </style>
 </head>
 <body>
@@ -1051,6 +1060,7 @@ body[data-theme="dark"] .tl-note { color: #94a3b8; }
       <button class="tb-btn" id="darkModeBtn" title="Toggle dark mode">🌙</button>
       <button class="tb-btn" id="importCsvBtn" title="Import jobs from CSV">⬆ Import</button>
       <button class="tb-btn" id="exportCsvBtn" title="Export tracked jobs to CSV">⬇ Export</button>
+      <button class="tb-btn" id="printBtn" title="Print current job list">🖨 Print</button>
       <button class="tb-btn" id="settingsNavBtn">⚙ Settings</button>
       <button class="tb-btn accent" id="addJobBtn">+ Add Job</button>
     </div>
@@ -1616,6 +1626,7 @@ body[data-theme="dark"] .tl-note { color: #94a3b8; }
     </div>
   </div>
 </div>
+<div id="printView" style="display:none"></div>
 <script src="dashboard.js"></script>
 </body>
 </html>
