@@ -26,6 +26,7 @@ const trackedFinderUrls = new Set();
 const visitedFinderUrls = new Set(JSON.parse(localStorage.getItem('visitedFinderUrls') || '[]'));
 const hiddenFinderIds = new Set(JSON.parse(localStorage.getItem('hiddenFinderIds') || '[]'));
 const savedFinderIds  = new Set(JSON.parse(localStorage.getItem('savedFinderIds')  || '[]'));
+const finderNotes = JSON.parse(localStorage.getItem('finderNotes') || '{}');
 let globalSearchWishlist = [];
 
 const DEFAULT_KEYWORDS = [
@@ -1551,6 +1552,19 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
+    // Finder note save
+    const noteSaveBtn = e.target.closest('[data-finder-note-save]');
+    if (noteSaveBtn) {
+      const id = noteSaveBtn.dataset.finderNoteSave;
+      const input = document.querySelector(`[data-finder-note="${id}"]`);
+      const note = input?.value.trim() || '';
+      if (note) finderNotes[id] = note; else delete finderNotes[id];
+      localStorage.setItem('finderNotes', JSON.stringify(finderNotes));
+      showToast('Note saved', 'success');
+      renderFinderJobs();
+      return;
+    }
+
     // Hide / Not Interested
     const hideBtn = e.target.closest('[data-finder-hide]');
     if (hideBtn) {
@@ -2095,6 +2109,15 @@ function renderJobCard(j, normUrl, appliedUrls) {
           </div>
           ${chips ? `<div class="skill-chips">${chips}</div>` : ''}
           ${j.description ? `<div class="card-notes">${j.description}</div>` : ''}
+          ${saved && finderView === 'saved' ? `
+          <div style="margin-top:8px">
+            ${finderNotes[j.id] ? `<div style="font-size:12px;color:#64748b;font-style:italic;margin-bottom:6px;padding:6px 10px;background:#f8fafc;border-radius:6px;border:1px solid #e2e8f0">📝 ${finderNotes[j.id]}</div>` : ''}
+            <div style="display:flex;gap:6px">
+              <input class="quick-note-input" data-finder-note="${j.id}" placeholder="📝 Add a note about this job…"
+                value="${(finderNotes[j.id] || '').replace(/"/g, '&quot;')}" style="font-size:12px">
+              <button class="quick-note-submit" data-finder-note-save="${j.id}" title="Save note">✓</button>
+            </div>
+          </div>` : ''}
         </div>
         <div class="card-actions">
           <button class="card-btn" data-action="view-job" data-url="${j.url}">🔗 View</button>
