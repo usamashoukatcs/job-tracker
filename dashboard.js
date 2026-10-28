@@ -26,6 +26,7 @@ const trackedFinderUrls = new Set();
 const visitedFinderUrls = new Set(JSON.parse(localStorage.getItem('visitedFinderUrls') || '[]'));
 const hiddenFinderIds = new Set(JSON.parse(localStorage.getItem('hiddenFinderIds') || '[]'));
 const savedFinderIds  = new Set(JSON.parse(localStorage.getItem('savedFinderIds')  || '[]'));
+let globalSearchWishlist = [];
 
 const DEFAULT_KEYWORDS = [
   'backend engineer',
@@ -640,6 +641,59 @@ function promptStatusReason(jobId, status) {
   modal.onclick = e => { if (e.target === modal) close(); };
 }
 
+// ── Global Search ─────────────────────────────────────────────────────────────
+
+async function openGlobalSearch() {
+  try { const { items } = await send('GET_WISHLIST', {}); globalSearchWishlist = items || []; }
+  catch { globalSearchWishlist = []; }
+  const modal = document.getElementById('globalSearchModal');
+  modal.style.display = 'flex';
+  const input = document.getElementById('globalSearchInput');
+  input.value = '';
+  input.focus();
+  renderGlobalResults('');
+}
+
+function closeGlobalSearch() {
+  document.getElementById('globalSearchModal').style.display = 'none';
+}
+
+function renderGlobalResults(query) {
+  const q = query.toLowerCase().trim();
+  const el = document.getElementById('globalSearchResults');
+  if (!q) {
+    el.innerHTML = `<div class="gs-empty">Type to search across jobs and wishlist…</div>`;
+    return;
+  }
+  const hit = s => (s || '').toLowerCase().includes(q);
+  const trackerHits = allJobs.filter(j => hit(j.title) || hit(j.company) || hit(j.notes) || hit((j.tags || []).join(' ')));
+  const wishlistHits = globalSearchWishlist.filter(w => hit(w.company) || hit(w.title) || hit(w.notes));
+  if (!trackerHits.length && !wishlistHits.length) {
+    el.innerHTML = `<div class="gs-empty">No results for "<strong>${query}</strong>"</div>`;
+    return;
+  }
+  el.innerHTML = [
+    ...trackerHits.map(j => `
+      <div class="gs-result" data-gs-type="tracker" data-gs-id="${j.id}" data-gs-company="${j.company}">
+        <div class="gs-result-avatar" style="${avatarStyle(j.company)}">${initials(j.company)}</div>
+        <div class="gs-result-main">
+          <div class="gs-result-title">${j.title}</div>
+          <div class="gs-result-sub">${j.company} · ${j.status}</div>
+        </div>
+        <span class="gs-source gs-source-tracker">📋 Tracker</span>
+      </div>`),
+    ...wishlistHits.map(w => `
+      <div class="gs-result" data-gs-type="wishlist">
+        <div class="gs-result-avatar" style="${avatarStyle(w.company)}">${initials(w.company)}</div>
+        <div class="gs-result-main">
+          <div class="gs-result-title">${w.title || 'Role not specified'}</div>
+          <div class="gs-result-sub">${w.company} · Wishlist target</div>
+        </div>
+        <span class="gs-source gs-source-wishlist">⭐ Wishlist</span>
+      </div>`),
+  ].join('');
+}
+
 async function submitQuickNote(jobId, input) {
   if (!input) return;
   const note = input.value.trim();
@@ -893,6 +947,30 @@ document.addEventListener('DOMContentLoaded', () => {
     closeImport();
     showToast(`Imported ${jobs.length} job${jobs.length !== 1 ? 's' : ''}`, 'success');
     await reload();
+  });
+
+  // Global search
+  document.getElementById('globalSearchBtn').addEventListener('click', openGlobalSearch);
+  document.getElementById('globalSearchModal').addEventListener('click', e => {
+    if (e.target === document.getElementById('globalSearchModal')) closeGlobalSearch();
+  });
+  document.getElementById('globalSearchInput').addEventListener('input', e => renderGlobalResults(e.target.value));
+  document.getElementById('globalSearchInput').addEventListener('keydown', e => { if (e.key === 'Escape') closeGlobalSearch(); });
+  document.getElementById('globalSearchResults').addEventListener('click', e => {
+    const row = e.target.closest('.gs-result');
+    if (!row) return;
+    closeGlobalSearch();
+    if (row.dataset.gsType === 'tracker') {
+      switchTab('tracker');
+      currentSearch = row.dataset.gsCompany || '';
+      document.getElementById('searchInput').value = currentSearch;
+      if (viewMode === 'kanban') renderKanban(); else renderJobs();
+    } else {
+      switchTab('wishlist');
+    }
+  });
+  document.addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); openGlobalSearch(); }
   });
 
   // Topbar buttons
