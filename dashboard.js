@@ -35,6 +35,15 @@ const DEFAULT_KEYWORDS = [
   'platform engineer',
 ].join('\n');
 
+const ACCENT_COLORS = [
+  { name: 'Blue',   hex: '#2563eb' },
+  { name: 'Green',  hex: '#16a34a' },
+  { name: 'Purple', hex: '#7c3aed' },
+  { name: 'Pink',   hex: '#db2777' },
+  { name: 'Orange', hex: '#ea580c' },
+  { name: 'Teal',   hex: '#0891b2' },
+];
+
 const REASON_OPTIONS = {
   rejected: ['Not selected', 'Overqualified', 'Under-qualified', 'Salary mismatch', 'Role cancelled', 'Better candidate chosen'],
   ghosted:  ['No response after apply', 'No response after interview', 'Recruiter went silent', 'Company stopped responding'],
@@ -115,6 +124,30 @@ function toggleDarkMode() {
   document.body.setAttribute('data-theme', next);
   localStorage.setItem('darkMode', next);
   document.getElementById('darkModeBtn').textContent = next === 'dark' ? '☀️' : '🌙';
+}
+
+function applyAccentColor(hex) {
+  const h = hex || '#2563eb';
+  const el = document.getElementById('accentOverride');
+  if (!el) return;
+  el.textContent = h === '#2563eb' ? '' : `
+    .filter-tab.active,.view-btn.active,.finder-chip.active { background:${h} !important;border-color:${h} !important; }
+    .main-tab.active { color:${h} !important;border-bottom-color:${h} !important; }
+    .main-tab:hover { color:${h} !important; }
+    .btn-primary { background:${h} !important; }
+    .tb-btn.accent { color:${h} !important; }
+    .quick-note-submit { background:${h} !important; }
+    .job-card[data-status="applied"] { border-left-color:${h} !important; }
+    .c-blue { color:${h} !important; }
+    .bar-fill { background:${h} !important; }
+    .topbar { background:linear-gradient(135deg,${h}bb 0%,${h} 60%,${h}ee 100%) !important; }
+    .reason-chip:hover,.reason-chip.selected { background:${h} !important;border-color:${h} !important; }
+  `;
+  document.querySelectorAll('.theme-swatch').forEach(sw => {
+    sw.classList.toggle('active', sw.dataset.hex === h);
+    sw.style.color = sw.dataset.hex;
+  });
+  localStorage.setItem('accentColor', h);
 }
 
 function parseCsvLine(line) {
@@ -899,6 +932,30 @@ document.addEventListener('DOMContentLoaded', () => {
   const savedTheme = localStorage.getItem('darkMode') || 'light';
   document.getElementById('darkModeBtn').textContent = savedTheme === 'dark' ? '☀️' : '🌙';
   document.getElementById('darkModeBtn').addEventListener('click', toggleDarkMode);
+
+  // Color theme picker
+  const pickerEl = document.getElementById('themePicker');
+  const pickerBtn = document.getElementById('themePickerBtn');
+  ACCENT_COLORS.forEach(c => {
+    const sw = document.createElement('div');
+    sw.className = 'theme-swatch';
+    sw.dataset.hex = c.hex;
+    sw.title = c.name;
+    sw.style.background = c.hex;
+    sw.style.color = c.hex;
+    pickerEl.appendChild(sw);
+  });
+  applyAccentColor(localStorage.getItem('accentColor') || '#2563eb');
+  pickerBtn.addEventListener('click', e => { e.stopPropagation(); pickerEl.classList.toggle('open'); });
+  pickerEl.addEventListener('click', e => {
+    const sw = e.target.closest('.theme-swatch');
+    if (!sw) return;
+    applyAccentColor(sw.dataset.hex);
+    pickerEl.classList.remove('open');
+  });
+  document.addEventListener('click', e => {
+    if (!pickerEl.contains(e.target) && e.target !== pickerBtn) pickerEl.classList.remove('open');
+  });
   document.getElementById('exportCsvBtn').addEventListener('click', () => {
     const filtered = getFiltered();
     if (currentFilter !== 'all' && filtered.length < allJobs.length) {

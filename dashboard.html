@@ -1056,6 +1056,15 @@ body[data-theme="dark"] #globalSearchInput { background:#1e293b;color:#e2e8f0;bo
 body[data-theme="dark"] .gs-result:hover,body[data-theme="dark"] .gs-result.gs-active { background:#0f172a; }
 body[data-theme="dark"] .gs-result { border-bottom-color:#1e293b; }
 body[data-theme="dark"] .gs-result-title { color:#f1f5f9; }
+.theme-picker-wrap { position:relative; }
+#themePicker { position:absolute;right:0;top:calc(100% + 8px);background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:12px 14px;box-shadow:0 8px 24px rgba(0,0,0,.15);z-index:200;display:none;gap:10px;flex-wrap:wrap;width:168px; }
+#themePicker.open { display:flex; }
+#themePickerLabel { width:100%;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#94a3b8; }
+.theme-swatch { width:26px;height:26px;border-radius:50%;cursor:pointer;border:2px solid rgba(255,255,255,.5);transition:transform .12s,box-shadow .12s; }
+.theme-swatch:hover { transform:scale(1.18); }
+.theme-swatch.active { box-shadow:0 0 0 3px #fff,0 0 0 5px currentColor; }
+body[data-theme="dark"] #themePicker { background:#1e293b;border-color:#334155; }
+body[data-theme="dark"] #themePickerLabel { color:#64748b; }
 @media print {
   body > *:not(#printView) { display: none !important; }
   #printView { display: block !important; font-family: sans-serif; color: #000; }
@@ -1066,6 +1075,7 @@ body[data-theme="dark"] .gs-result-title { color:#f1f5f9; }
   #printView .pr-notes { color: #555; font-style: italic; max-width: 200px; }
 }
 </style>
+<style id="accentOverride"></style>
 </head>
 <body>
 <div class="app">
@@ -1077,6 +1087,10 @@ body[data-theme="dark"] .gs-result-title { color:#f1f5f9; }
     </div>
     <div class="topbar-actions">
       <button class="tb-btn" id="globalSearchBtn" title="Global search (Ctrl+K)">🔍</button>
+      <div class="theme-picker-wrap">
+        <button class="tb-btn" id="themePickerBtn" title="Change accent color">🎨</button>
+        <div id="themePicker"><div id="themePickerLabel">Accent Color</div></div>
+      </div>
       <button class="tb-btn" id="darkModeBtn" title="Toggle dark mode">🌙</button>
       <button class="tb-btn" id="importCsvBtn" title="Import jobs from CSV">⬆ Import</button>
       <button class="tb-btn" id="exportCsvBtn" title="Export tracked jobs to CSV">⬇ Export</button>
