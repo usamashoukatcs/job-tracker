@@ -614,6 +614,7 @@ function renderJobs() {
             <option value="ghosted">Ghosted</option>
             <option value="archived">Archived</option>
           </select>
+          <button class="card-btn" data-action="qa" data-job-id="${j.id}" title="Interview Q&A prep">❓ Q&A${j.interviewQA?.length ? ` (${j.interviewQA.length})` : ''}</button>
           ${['interview','offer'].includes(j.status) ? `<button class="card-btn" data-action="add-round" data-job-id="${j.id}" title="Log an interview round">🎙 Round</button>` : ''}
           ${j.applicationMethod === 'email' ? `<button class="card-btn" data-action="followup" data-job-id="${j.id}">📧 Follow-up</button>` : ''}
           <a class="card-btn" href="https://www.glassdoor.com/Search/results.htm?keyword=${encodeURIComponent(j.company)}" target="_blank" title="Glassdoor reviews" style="text-decoration:none;display:flex;align-items:center;justify-content:center">🌟</a>
@@ -725,6 +726,82 @@ function renderGlobalResults(query) {
         <span class="gs-source gs-source-wishlist">⭐ Wishlist</span>
       </div>`),
   ].join('');
+}
+
+// ── Interview Q&A ─────────────────────────────────────────────────────────────
+
+let qaCurrentJobId = null;
+
+function openQaModal(jobId) {
+  const job = allJobs.find(j => j.id === jobId);
+  if (!job) return;
+  qaCurrentJobId = jobId;
+  document.getElementById('qaModalTitle').textContent = `${job.company} — Interview Q&A`;
+  renderQaModal();
+  document.getElementById('qaModal').style.display = 'flex';
+  document.getElementById('qaNewQ').focus();
+}
+
+function closeQaModal() {
+  document.getElementById('qaModal').style.display = 'none';
+  qaCurrentJobId = null;
+}
+
+function renderQaModal() {
+  const job = allJobs.find(j => j.id === qaCurrentJobId);
+  const qa = job?.interviewQA || [];
+  document.getElementById('qaModalBody').innerHTML = `
+    ${qa.length ? qa.map((item, i) => `
+      <div class="qa-item">
+        <div class="qa-q-row">
+          <span class="qa-num">Q${i + 1}</span>
+          <span class="qa-q-text">${item.q}</span>
+          ${item.a ? `<button class="qa-toggle-ans" data-qa-ans-id="${i}">▾ Answer</button>` : ''}
+          <button class="card-btn danger" data-qa-del="${i}" style="font-size:10px;padding:2px 6px;flex-shrink:0">✕</button>
+        </div>
+        ${item.a ? `<div class="qa-ans" id="qaAns${i}" style="display:none">${item.a}</div>` : ''}
+      </div>`).join('') : '<div style="color:#94a3b8;font-size:13px;margin-bottom:14px;text-align:center">No questions yet — add your first one below.</div>'}
+    <div style="border-top:1px solid #e2e8f0;padding-top:14px;margin-top:${qa.length ? '4px' : '0'}">
+      <label class="form-label">Question</label>
+      <input id="qaNewQ" type="text" placeholder="e.g. Tell me about yourself…" maxlength="250"
+        style="width:100%;padding:8px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:13px;outline:none;margin-bottom:8px;box-sizing:border-box">
+      <label class="form-label">Answer <span style="font-weight:400;color:#94a3b8">(optional)</span></label>
+      <textarea id="qaNewA" rows="2" placeholder="Your planned answer or key points…" maxlength="600"
+        style="width:100%;padding:8px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:13px;outline:none;resize:vertical;box-sizing:border-box;margin-bottom:12px"></textarea>
+      <button class="btn btn-primary" id="qaAddBtn" style="width:100%">+ Add Question</button>
+    </div>`;
+
+  document.getElementById('qaAddBtn').onclick = async () => {
+    const q = document.getElementById('qaNewQ').value.trim();
+    if (!q) { document.getElementById('qaNewQ').focus(); return; }
+    const a = document.getElementById('qaNewA').value.trim();
+    const job = allJobs.find(j => j.id === qaCurrentJobId);
+    const updated = [...(job?.interviewQA || []), { q, a }];
+    await send('UPDATE_JOB', { id: qaCurrentJobId, updates: { interviewQA: updated } });
+    await reload();
+    renderQaModal();
+  };
+
+  document.querySelectorAll('[data-qa-del]').forEach(btn => {
+    btn.onclick = async () => {
+      const i = parseInt(btn.dataset.qaDel, 10);
+      const job = allJobs.find(j => j.id === qaCurrentJobId);
+      const updated = (job?.interviewQA || []).filter((_, idx) => idx !== i);
+      await send('UPDATE_JOB', { id: qaCurrentJobId, updates: { interviewQA: updated } });
+      await reload();
+      renderQaModal();
+    };
+  });
+
+  document.querySelectorAll('[data-qa-ans-id]').forEach(btn => {
+    btn.onclick = () => {
+      const ansEl = document.getElementById('qaAns' + btn.dataset.qaAnsId);
+      if (!ansEl) return;
+      const open = ansEl.style.display !== 'none';
+      ansEl.style.display = open ? 'none' : 'block';
+      btn.textContent = open ? '▾ Answer' : '▴ Answer';
+    };
+  });
 }
 
 async function submitQuickNote(jobId, input) {
@@ -1006,6 +1083,11 @@ document.addEventListener('DOMContentLoaded', () => {
     await reload();
   });
 
+  // Q&A modal
+  document.getElementById('closeQaBtn').addEventListener('click', closeQaModal);
+  document.getElementById('closeQaFooterBtn').addEventListener('click', closeQaModal);
+  document.getElementById('qaModal').addEventListener('click', e => { if (e.target === document.getElementById('qaModal')) closeQaModal(); });
+
   // Global search
   document.getElementById('globalSearchBtn').addEventListener('click', openGlobalSearch);
   document.getElementById('globalSearchModal').addEventListener('click', e => {
@@ -1224,6 +1306,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!btn) return;
     const action = btn.dataset.action;
     const jobId  = btn.dataset.jobId || btn.closest('[data-job-id]')?.dataset.jobId;
+    if (action === 'qa')            openQaModal(jobId);
     if (action === 'edit')          editJob(jobId);
     if (action === 'delete')        deleteJob(jobId);
     if (action === 'followup')      openFollowupModal(jobId);
