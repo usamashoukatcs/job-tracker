@@ -289,6 +289,11 @@ function needsAttention(j) {
     const diff = Math.round((new Date(j.interviewDate) - now) / 86400000);
     if (diff >= 0 && diff <= 1) return true;
   }
+  // deadline within 3 days or overdue (within 7 days)
+  if (j.deadline) {
+    const diff = Math.round((new Date(j.deadline) - now) / 86400000);
+    if (diff <= 3 && diff >= -7) return true;
+  }
   return false;
 }
 
@@ -323,6 +328,12 @@ function getFiltered() {
     case 'priority':  jobs.sort((a, b) => (b.priority || 0) - (a.priority || 0)); break;
     case 'interest':    jobs.sort((a, b) => (b.interest || 0) - (a.interest || 0)); break;
     case 'confidence':  jobs.sort((a, b) => (b.confidence || 0) - (a.confidence || 0)); break;
+    case 'deadline':    jobs.sort((a, b) => {
+      if (!a.deadline && !b.deadline) return 0;
+      if (!a.deadline) return 1;
+      if (!b.deadline) return -1;
+      return new Date(a.deadline) - new Date(b.deadline);
+    }); break;
     default:            jobs.sort((a, b) => new Date(b.appliedDate) - new Date(a.appliedDate)); break;
   }
   return jobs;
@@ -586,6 +597,17 @@ function renderJobs() {
             if (diff < 0)  return `<div class="alert-strip alert-red" style="display:flex;align-items:center;justify-content:space-between;font-weight:600">📌 Follow-up overdue by ${Math.abs(diff)}d<button class="card-btn" data-action="clear-followup" data-job-id="${j.id}" style="font-size:11px;padding:2px 8px;margin:0">Clear</button></div>`;
             if (diff === 0) return `<div class="alert-strip alert-green" style="font-weight:600">📌 Follow-up due today!</div>`;
             return `<div class="alert-strip alert-blue">📌 Follow-up in ${diff}d — ${new Date(j.followupDate).toLocaleDateString('en-US',{month:'short',day:'numeric'})}</div>`;
+          })()}
+          ${(function() {
+            if (!j.deadline) return '';
+            const diff = Math.round((new Date(j.deadline) - Date.now()) / 86400000);
+            if (diff < -14) return '';
+            if (diff < 0)  return `<div class="alert-strip alert-red" style="font-weight:600">⏰ Deadline passed ${Math.abs(diff)}d ago</div>`;
+            if (diff === 0) return `<div class="alert-strip alert-red" style="font-weight:600">⏰ Apply by today!</div>`;
+            if (diff === 1) return `<div class="alert-strip alert-red" style="font-weight:600">⏰ Deadline tomorrow!</div>`;
+            const label = new Date(j.deadline).toLocaleDateString('en-US',{month:'short',day:'numeric'});
+            const cls = diff <= 3 ? 'alert-strip alert-yellow' : 'alert-strip alert-blue';
+            return `<div class="${cls}">⏰ Deadline in ${diff}d — ${label}</div>`;
           })()}
           ${stale ? `<div class="alert-strip alert-yellow" style="display:flex;align-items:center;justify-content:space-between">🕰 No activity for ${daysSince(lastActivityDate)} days<button class="card-btn" data-action="archive-stale" data-job-id="${j.id}" style="font-size:11px;padding:2px 8px;margin:0">Archive</button></div>` : ''}
           ${followupDue ? `<div class="alert-strip alert-yellow">⏰ Follow-up overdue — ${daysAgo} days with no response</div>` : ''}
@@ -853,6 +875,7 @@ function openAddModal(prefill) {
   document.getElementById('fEmail').value            = '';
   document.getElementById('fNotes').value       = '';
   document.getElementById('fFollowupDate').value = '';
+  document.getElementById('fDeadline').value     = '';
   document.getElementById('fJobDesc').value     = '';
   document.getElementById('fPrep').value        = '';
   document.getElementById('addModal').style.display = 'flex';
@@ -878,6 +901,7 @@ function editJob(id) {
   document.getElementById('fEmail').value             = j.contactEmail || '';
   document.getElementById('fNotes').value       = j.notes || '';
   document.getElementById('fFollowupDate').value = j.followupDate ? j.followupDate.slice(0, 10) : '';
+  document.getElementById('fDeadline').value     = j.deadline ? j.deadline.slice(0, 10) : '';
   document.getElementById('fJobDesc').value      = j.jobDescription || '';
   document.getElementById('fPrep').value         = j.prepNotes || '';
   document.getElementById('addModal').style.display = 'flex';
@@ -920,6 +944,7 @@ async function saveJob() {
     contactEmail:      document.getElementById('fEmail').value.trim(),
     notes:        document.getElementById('fNotes').value.trim(),
     followupDate:   document.getElementById('fFollowupDate').value || null,
+    deadline:       document.getElementById('fDeadline').value || null,
     jobDescription: document.getElementById('fJobDesc').value.trim(),
     prepNotes:      document.getElementById('fPrep').value.trim()
   };
@@ -1441,7 +1466,7 @@ document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('fStatus').value  = 'applied';
       document.getElementById('fDate').value    = new Date().toISOString().slice(0, 10);
       // clear remaining fields
-      ['fSalary','fResume','fTags','fEmail','fPrep','fJobDesc','fFollowupDate','fMethod','fInterviewDate','fRecruiterName','fRecruiterLinkedin'].forEach(id => {
+      ['fSalary','fResume','fTags','fEmail','fPrep','fJobDesc','fFollowupDate','fDeadline','fMethod','fInterviewDate','fRecruiterName','fRecruiterLinkedin'].forEach(id => {
         const el = document.getElementById(id); if (el) el.value = '';
       });
       editingId = null;
