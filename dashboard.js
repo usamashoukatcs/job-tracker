@@ -2513,29 +2513,53 @@ function renderAnalytics() {
       </div>`;
   }).join('') + (total === 0 ? '<div style="font-size:12px;color:#94a3b8">No data yet</div>' : '');
 
-  // Source effectiveness: interview rate per application method
+  // Source effectiveness: full conversion funnel per application method
   const sourceMap = {};
   for (const j of jobs) {
     const src = j.applicationMethod || 'online';
-    if (!sourceMap[src]) sourceMap[src] = { total: 0, interviewed: 0 };
+    if (!sourceMap[src]) sourceMap[src] = { total: 0, interviewed: 0, offered: 0 };
     sourceMap[src].total++;
     if (['interview','offer'].includes(j.status)) sourceMap[src].interviewed++;
+    if (j.status === 'offer') sourceMap[src].offered++;
   }
   const sourceLabels = { online: '🌐 Online', linkedin: '🔗 LinkedIn', email: '📧 Email', referral: '🤝 Referral' };
   const sources = Object.entries(sourceMap)
-    .map(([k, v]) => ({ key: k, label: sourceLabels[k] || k, rate: v.total ? Math.round(v.interviewed / v.total * 100) : 0, total: v.total, interviewed: v.interviewed }))
-    .sort((a, b) => b.rate - a.rate);
-  const maxRate = Math.max(...sources.map(s => s.rate), 1);
-  document.getElementById('sourceChart').innerHTML = sources.length
-    ? sources.map(s => `
-        <div class="hbar-row">
-          <div class="hbar-label">${s.label}</div>
-          <div class="hbar-track"><div class="hbar-fill" style="width:${Math.round(s.rate/maxRate*100)}%;background:${s.rate >= 20 ? '#16a34a' : s.rate >= 8 ? '#2563eb' : '#94a3b8'}"></div></div>
-          <div class="hbar-count" style="width:36px">${s.rate}%</div>
-        </div>
-        <div style="font-size:10px;color:#94a3b8;margin:-8px 0 10px 86px">${s.interviewed}/${s.total} got interviews</div>`)
-      .join('')
-    : '<div style="font-size:12px;color:#94a3b8">No data yet</div>';
+    .map(([k, v]) => {
+      const intRate  = v.total ? Math.round(v.interviewed / v.total * 100) : 0;
+      const offRate  = v.total ? Math.round(v.offered    / v.total * 100) : 0;
+      return { key: k, label: sourceLabels[k] || k, total: v.total, interviewed: v.interviewed, offered: v.offered, intRate, offRate };
+    })
+    .sort((a, b) => b.intRate - a.intRate);
+  const maxTotal = Math.max(...sources.map(s => s.total), 1);
+  document.getElementById('sourceChart').innerHTML = sources.length ? `
+    <div style="display:grid;grid-template-columns:1fr;gap:10px">
+      ${sources.map(s => `
+        <div style="padding:10px 0;border-bottom:1px solid var(--border,#e2e8f0)">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+            <span style="font-size:13px;font-weight:600">${s.label}</span>
+            <span style="font-size:11px;color:#94a3b8">${s.total} applied</span>
+          </div>
+          <div style="display:flex;gap:6px;align-items:center;margin-bottom:5px">
+            <div style="flex:1;height:8px;background:var(--bg,#f1f5f9);border-radius:4px;overflow:hidden">
+              <div style="height:100%;border-radius:4px;background:#6366f1;width:100%"></div>
+            </div>
+            <span style="font-size:11px;color:#6366f1;width:70px;text-align:right">${s.total} applied</span>
+          </div>
+          <div style="display:flex;gap:6px;align-items:center;margin-bottom:5px">
+            <div style="flex:1;height:8px;background:var(--bg,#f1f5f9);border-radius:4px;overflow:hidden">
+              <div style="height:100%;border-radius:4px;background:${s.intRate >= 20 ? '#16a34a' : s.intRate >= 8 ? '#2563eb' : '#94a3b8'};width:${s.total ? Math.round(s.interviewed/s.total*100) : 0}%"></div>
+            </div>
+            <span style="font-size:11px;color:${s.intRate >= 20 ? '#16a34a' : s.intRate >= 8 ? '#2563eb' : '#94a3b8'};width:70px;text-align:right">${s.interviewed} interviews (${s.intRate}%)</span>
+          </div>
+          ${s.offered > 0 ? `
+          <div style="display:flex;gap:6px;align-items:center">
+            <div style="flex:1;height:8px;background:var(--bg,#f1f5f9);border-radius:4px;overflow:hidden">
+              <div style="height:100%;border-radius:4px;background:#f59e0b;width:${s.total ? Math.round(s.offered/s.total*100) : 0}%"></div>
+            </div>
+            <span style="font-size:11px;color:#f59e0b;width:70px;text-align:right">${s.offered} offers (${s.offRate}%)</span>
+          </div>` : ''}
+        </div>`).join('')}
+    </div>` : '<div style="font-size:12px;color:#94a3b8">No data yet</div>';
 
   // ── Tag analytics ────────────────────────────────────────────────────────
   const tagMap = {};
