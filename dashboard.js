@@ -2422,6 +2422,23 @@ function renderAnalytics() {
       <div class="kpi-label">Avg to Offer</div>
       <div class="kpi-sub">${avgTimeToOffer === null ? 'No offers yet' : `across ${offerTimes.length} offer${offerTimes.length !== 1 ? 's' : ''}`}</div>
     </div>
+    ${(() => {
+      const msDay = 86400000;
+      const now = Date.now();
+      const thisWeek = jobs.filter(j => j.appliedDate && (now - new Date(j.appliedDate).getTime()) < 7 * msDay).length;
+      const lastWeek = jobs.filter(j => { if (!j.appliedDate) return false; const d = now - new Date(j.appliedDate).getTime(); return d >= 7 * msDay && d < 14 * msDay; }).length;
+      const delta = thisWeek - lastWeek;
+      const arrow = delta > 0 ? '↑' : delta < 0 ? '↓' : '→';
+      const cls   = delta > 0 ? 'c-green' : delta < 0 ? 'c-red' : 'c-gray';
+      const sub   = lastWeek === 0 && thisWeek === 0 ? 'No apps yet this fortnight'
+                  : delta === 0 ? `Same as last week (${lastWeek})`
+                  : `${Math.abs(delta)} ${delta > 0 ? 'more' : 'fewer'} than last week (${lastWeek})`;
+      return `<div class="kpi-card">
+        <div class="kpi-value ${cls}">${arrow} ${thisWeek}</div>
+        <div class="kpi-label">This Week</div>
+        <div class="kpi-sub">${sub}</div>
+      </div>`;
+    })()}
   `;
 
   // Weekly bar chart
