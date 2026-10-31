@@ -644,6 +644,7 @@ function renderJobs() {
           <a class="card-btn" href="https://www.linkedin.com/search/results/companies/?keywords=${encodeURIComponent(j.company)}" target="_blank" title="LinkedIn company" style="text-decoration:none;display:flex;align-items:center;justify-content:center">🔗</a>
           <a class="card-btn" href="https://www.levels.fyi/companies/${encodeURIComponent(j.company.toLowerCase().replace(/\s+/g,'-'))}/salaries/" target="_blank" title="Levels.fyi salaries" style="text-decoration:none;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700">💲</a>
           <button class="card-btn" data-action="copy" data-job-id="${j.id}" title="Copy job details">📋</button>
+          <button class="card-btn" data-action="duplicate" data-job-id="${j.id}" title="Duplicate this application">⊕</button>
           <button class="card-btn danger" data-action="delete" data-job-id="${j.id}">🗑</button>
         </div>
       </div>`;
@@ -835,6 +836,37 @@ async function submitQuickNote(jobId, input) {
   input.value = '';
   showToast('Note saved', 'success');
   await reload();
+}
+
+async function duplicateJob(id) {
+  const job = allJobs.find(j => j.id === id);
+  if (!job) return;
+  const dupe = {
+    id: Date.now().toString(),
+    title: job.title,
+    company: job.company,
+    url: job.url || '',
+    status: 'applied',
+    applicationMethod: job.applicationMethod || 'online',
+    appliedDate: new Date().toISOString(),
+    salary: job.salary || '',
+    tags: [...(job.tags || [])],
+    resumeVersion: job.resumeVersion || '',
+    recruiterName: job.recruiterName || '',
+    recruiterLinkedin: job.recruiterLinkedin || '',
+    contactEmail: job.contactEmail || '',
+    notes: job.notes || '',
+    jobDescription: job.jobDescription || '',
+    prepNotes: job.prepNotes || '',
+    interviewDate: null,
+    followupDate: null,
+    deadline: null,
+    events: [],
+    interviewQA: [],
+  };
+  await send('ADD_JOB', { job: dupe });
+  await reload();
+  showToast(`Duplicated: ${job.title} @ ${job.company}`, 'success');
 }
 
 function deleteJob(id) {
@@ -1337,6 +1369,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (action === 'delete')        deleteJob(jobId);
     if (action === 'followup')      openFollowupModal(jobId);
     if (action === 'add-round')     openRoundModal(jobId);
+    if (action === 'duplicate')       duplicateJob(jobId);
     if (action === 'archive-stale')  quickStatus(jobId, 'archived');
     if (action === 'clear-followup') {
       send('UPDATE_JOB', { id: jobId, updates: { followupDate: null } }).then(reload);
