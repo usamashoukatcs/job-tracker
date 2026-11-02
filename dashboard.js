@@ -45,6 +45,9 @@ const ACCENT_COLORS = [
   { name: 'Teal',   hex: '#0891b2' },
 ];
 
+const LABEL_COLORS = [null, '#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#a855f7'];
+const LABEL_NAMES  = ['None', 'Red', 'Orange', 'Yellow', 'Green', 'Blue', 'Purple'];
+
 const REASON_OPTIONS = {
   rejected: ['Not selected', 'Overqualified', 'Under-qualified', 'Salary mismatch', 'Role cancelled', 'Better candidate chosen'],
   ghosted:  ['No response after apply', 'No response after interview', 'Recruiter went silent', 'Company stopped responding'],
@@ -556,7 +559,7 @@ function renderJobs() {
       : '🌐 online';
 
     return `
-      <div class="job-card" id="card-${j.id}" data-job-id="${j.id}" data-status="${j.status}" style="${j.pinned ? 'border-top:2px solid #f59e0b;' : ''}">
+      <div class="job-card" id="card-${j.id}" data-job-id="${j.id}" data-status="${j.status}" style="${j.pinned ? 'border-top:2px solid #f59e0b;' : ''}${j.colorLabel ? 'border-left:3px solid ' + j.colorLabel + ';' : ''}">
         <label style="position:absolute;top:10px;right:10px;cursor:pointer;display:none" class="bulk-check">
           <input type="checkbox" data-select-id="${j.id}" style="width:15px;height:15px;cursor:pointer" ${selectedIds.has(j.id) ? 'checked' : ''}>
         </label>
@@ -572,7 +575,8 @@ function renderJobs() {
           <div class="card-badge">
             <span class="badge ${STATUS_BADGE[j.status] || 'badge-applied'}">${j.status}</span>
             ${stale ? `<span class="badge-stale">🕰 stale</span>` : ''}
-            ${j.statusUpdated ? `<span style="font-size:10px;color:#94a3b8;display:block;text-align:right;margin-top:3px">${daysSince(j.statusUpdated)}d</span>` : ''}</div>
+            ${j.statusUpdated ? `<span style="font-size:10px;color:#94a3b8;display:block;text-align:right;margin-top:3px">${daysSince(j.statusUpdated)}d</span>` : ''}
+            <span data-action="cycle-label" data-job-id="${j.id}" title="Color label: ${LABEL_NAMES[LABEL_COLORS.indexOf(j.colorLabel ?? null)] ?? 'None'} — click to change" style="display:block;width:12px;height:12px;border-radius:50%;margin:5px 0 0 auto;cursor:pointer;${j.colorLabel ? 'background:' + j.colorLabel : 'background:transparent;border:1.5px solid #475569'}"></span></div>
         </div>
 
         <div class="card-body">
@@ -1361,6 +1365,16 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.target.closest('.pstar'))   return;
     if (e.target.closest('.iheart'))  return;
     if (e.target.closest('.cemoji'))  return;
+    if (e.target.closest('[data-action="cycle-label"]')) {
+      const dot = e.target.closest('[data-action="cycle-label"]');
+      const jid = dot.dataset.jobId;
+      const job = allJobs.find(j => j.id === jid);
+      if (!job) return;
+      const idx  = LABEL_COLORS.indexOf(job.colorLabel ?? null);
+      const next = LABEL_COLORS[(idx + 1) % LABEL_COLORS.length];
+      send('UPDATE_JOB', { id: jid, updates: { colorLabel: next } }).then(reload);
+      return;
+    }
     if (e.target.closest('.quick-note-submit')) return;
     if (e.target.closest('.card-prep-toggle')) return;
     if (e.target.closest('.card-tag')) return;
