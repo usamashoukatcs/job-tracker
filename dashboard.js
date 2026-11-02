@@ -645,6 +645,7 @@ function renderJobs() {
             <option value="archived">Archived</option>
           </select>
           <button class="card-btn" data-action="qa" data-job-id="${j.id}" title="Interview Q&A prep">❓ Q&A${j.interviewQA?.length ? ` (${j.interviewQA.length})` : ''}</button>
+          <button class="card-btn" data-action="todos" data-job-id="${j.id}" title="Job tasks">${(()=>{ const todos=j.todos||[]; return todos.length ? `☑ ${todos.filter(t=>t.done).length}/${todos.length}` : '☑ Tasks'; })()}</button>
           ${['interview','offer'].includes(j.status) ? `<button class="card-btn" data-action="add-round" data-job-id="${j.id}" title="Log an interview round">🎙 Round</button>` : ''}
           ${j.applicationMethod === 'email' ? `<button class="card-btn" data-action="followup" data-job-id="${j.id}">📧 Follow-up</button>` : ''}
           <a class="card-btn" href="https://www.glassdoor.com/Search/results.htm?keyword=${encodeURIComponent(j.company)}" target="_blank" title="Glassdoor reviews" style="text-decoration:none;display:flex;align-items:center;justify-content:center">🌟</a>
@@ -762,7 +763,8 @@ function renderGlobalResults(query) {
 
 // ── Interview Q&A ─────────────────────────────────────────────────────────────
 
-let qaCurrentJobId = null;
+let qaCurrentJobId  = null;
+let todosJobId      = null;
 
 function openQaModal(jobId) {
   const job = allJobs.find(j => j.id === jobId);
@@ -832,6 +834,82 @@ function renderQaModal() {
       const open = ansEl.style.display !== 'none';
       ansEl.style.display = open ? 'none' : 'block';
       btn.textContent = open ? '▾ Answer' : '▴ Answer';
+    };
+  });
+}
+
+function openTodosModal(jobId) {
+  const job = allJobs.find(j => j.id === jobId);
+  if (!job) return;
+  todosJobId = jobId;
+  document.getElementById('todosModalTitle').textContent = `${job.company} — Tasks`;
+  renderTodosModal();
+  document.getElementById('todosModal').style.display = 'flex';
+  document.getElementById('todoNewInput').focus();
+}
+
+function closeTodosModal() {
+  document.getElementById('todosModal').style.display = 'none';
+  todosJobId = null;
+}
+
+function renderTodosModal() {
+  const job   = allJobs.find(j => j.id === todosJobId);
+  const todos = job?.todos || [];
+  const done  = todos.filter(t => t.done).length;
+  document.getElementById('todosModalBody').innerHTML = `
+    ${todos.length ? `<div style="font-size:11px;color:#94a3b8;text-align:right;padding:0 12px 6px">${done}/${todos.length} done</div>` : ''}
+    <div id="todoList">
+      ${todos.length ? todos.map((t, i) => `
+        <div class="todo-item">
+          <input type="checkbox" class="todo-check" data-todo-toggle="${i}" ${t.done ? 'checked' : ''}>
+          <span class="todo-text${t.done ? ' done' : ''}">${t.text.replace(/</g,'&lt;')}</span>
+          <button class="card-btn danger" data-todo-del="${i}" style="font-size:10px;padding:2px 6px;flex-shrink:0">✕</button>
+        </div>`).join('') : '<div style="color:#94a3b8;font-size:13px;padding:12px;text-align:center">No tasks yet — add one below.</div>'}
+    </div>
+    <div style="border-top:1px solid #e2e8f0;padding:14px 12px 0">
+      <div style="display:flex;gap:8px">
+        <input id="todoNewInput" type="text" placeholder="e.g. Send thank-you email…" maxlength="200"
+          style="flex:1;padding:8px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:13px;outline:none;box-sizing:border-box">
+        <button class="btn btn-primary" id="todoAddBtn" style="white-space:nowrap">+ Add</button>
+      </div>
+    </div>`;
+
+  document.getElementById('todoAddBtn').onclick = async () => {
+    const input = document.getElementById('todoNewInput');
+    const text  = input.value.trim();
+    if (!text) { input.focus(); return; }
+    const job = allJobs.find(j => j.id === todosJobId);
+    const updated = [...(job?.todos || []), { id: Date.now().toString(), text, done: false }];
+    await send('UPDATE_JOB', { id: todosJobId, updates: { todos: updated } });
+    await reload();
+    renderTodosModal();
+    document.getElementById('todoNewInput').focus();
+  };
+
+  document.getElementById('todoNewInput').onkeydown = e => {
+    if (e.key === 'Enter') document.getElementById('todoAddBtn').click();
+  };
+
+  document.querySelectorAll('[data-todo-toggle]').forEach(cb => {
+    cb.onchange = async () => {
+      const i   = parseInt(cb.dataset.todoToggle, 10);
+      const job = allJobs.find(j => j.id === todosJobId);
+      const updated = (job?.todos || []).map((t, idx) => idx === i ? { ...t, done: cb.checked } : t);
+      await send('UPDATE_JOB', { id: todosJobId, updates: { todos: updated } });
+      await reload();
+      renderTodosModal();
+    };
+  });
+
+  document.querySelectorAll('[data-todo-del]').forEach(btn => {
+    btn.onclick = async () => {
+      const i   = parseInt(btn.dataset.todoDel, 10);
+      const job = allJobs.find(j => j.id === todosJobId);
+      const updated = (job?.todos || []).filter((_, idx) => idx !== i);
+      await send('UPDATE_JOB', { id: todosJobId, updates: { todos: updated } });
+      await reload();
+      renderTodosModal();
     };
   });
 }
@@ -1153,6 +1231,9 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('closeQaBtn').addEventListener('click', closeQaModal);
   document.getElementById('closeQaFooterBtn').addEventListener('click', closeQaModal);
   document.getElementById('qaModal').addEventListener('click', e => { if (e.target === document.getElementById('qaModal')) closeQaModal(); });
+  document.getElementById('closeTodosBtn').addEventListener('click', closeTodosModal);
+  document.getElementById('closeTodosFooterBtn').addEventListener('click', closeTodosModal);
+  document.getElementById('todosModal').addEventListener('click', e => { if (e.target === document.getElementById('todosModal')) closeTodosModal(); });
 
   // Global search
   document.getElementById('globalSearchBtn').addEventListener('click', openGlobalSearch);
@@ -1383,6 +1464,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const action = btn.dataset.action;
     const jobId  = btn.dataset.jobId || btn.closest('[data-job-id]')?.dataset.jobId;
     if (action === 'qa')            openQaModal(jobId);
+    if (action === 'todos')         openTodosModal(jobId);
     if (action === 'edit')          editJob(jobId);
     if (action === 'delete')        deleteJob(jobId);
     if (action === 'followup')      openFollowupModal(jobId);
