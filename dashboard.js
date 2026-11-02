@@ -336,7 +336,10 @@ function getFiltered() {
     }); break;
     default:            jobs.sort((a, b) => new Date(b.appliedDate) - new Date(a.appliedDate)); break;
   }
-  return jobs;
+  // pinned jobs always float to top
+  const pinned   = jobs.filter(j => j.pinned);
+  const unpinned = jobs.filter(j => !j.pinned);
+  return [...pinned, ...unpinned];
 }
 
 // ── Render ───────────────────────────────────────────────────────────────────
@@ -553,7 +556,7 @@ function renderJobs() {
       : '🌐 online';
 
     return `
-      <div class="job-card" id="card-${j.id}" data-job-id="${j.id}" data-status="${j.status}">
+      <div class="job-card" id="card-${j.id}" data-job-id="${j.id}" data-status="${j.status}" style="${j.pinned ? 'border-top:2px solid #f59e0b;' : ''}">
         <label style="position:absolute;top:10px;right:10px;cursor:pointer;display:none" class="bulk-check">
           <input type="checkbox" data-select-id="${j.id}" style="width:15px;height:15px;cursor:pointer" ${selectedIds.has(j.id) ? 'checked' : ''}>
         </label>
@@ -643,6 +646,7 @@ function renderJobs() {
           <a class="card-btn" href="https://www.glassdoor.com/Search/results.htm?keyword=${encodeURIComponent(j.company)}" target="_blank" title="Glassdoor reviews" style="text-decoration:none;display:flex;align-items:center;justify-content:center">🌟</a>
           <a class="card-btn" href="https://www.linkedin.com/search/results/companies/?keywords=${encodeURIComponent(j.company)}" target="_blank" title="LinkedIn company" style="text-decoration:none;display:flex;align-items:center;justify-content:center">🔗</a>
           <a class="card-btn" href="https://www.levels.fyi/companies/${encodeURIComponent(j.company.toLowerCase().replace(/\s+/g,'-'))}/salaries/" target="_blank" title="Levels.fyi salaries" style="text-decoration:none;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700">💲</a>
+          <button class="card-btn" data-action="toggle-pin" data-job-id="${j.id}" title="${j.pinned ? 'Unpin' : 'Pin to top'}" style="${j.pinned ? 'color:#f59e0b' : ''}">${j.pinned ? '📌' : '📍'}</button>
           <button class="card-btn" data-action="copy" data-job-id="${j.id}" title="Copy job details">📋</button>
           <button class="card-btn" data-action="duplicate" data-job-id="${j.id}" title="Duplicate this application">⊕</button>
           <button class="card-btn danger" data-action="delete" data-job-id="${j.id}">🗑</button>
@@ -1370,6 +1374,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (action === 'followup')      openFollowupModal(jobId);
     if (action === 'add-round')     openRoundModal(jobId);
     if (action === 'duplicate')       duplicateJob(jobId);
+    if (action === 'toggle-pin') {
+      const job = allJobs.find(j => j.id === jobId);
+      if (job) send('UPDATE_JOB', { id: jobId, updates: { pinned: !job.pinned } }).then(reload);
+    }
     if (action === 'archive-stale')  quickStatus(jobId, 'archived');
     if (action === 'clear-followup') {
       send('UPDATE_JOB', { id: jobId, updates: { followupDate: null } }).then(reload);
