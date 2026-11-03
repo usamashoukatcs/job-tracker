@@ -8,7 +8,7 @@ let allJobs = [];
 let settings = {};
 let currentFilter = 'all';
 let currentSearch = '';
-let currentTagFilter = '';
+let currentTagFilters = new Set();
 let followupJobId = null;
 let viewMode = 'list';
 let trackerSort = 'date-desc';
@@ -262,7 +262,7 @@ function send(type, extra = {}) {
 
 function setFilter(f, clickedEl) {
   currentFilter = f;
-  currentTagFilter = '';
+  currentTagFilters.clear();
   document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.stat-card').forEach(t => t.classList.remove('active'));
   if (clickedEl) clickedEl.classList.add('active');
@@ -320,8 +320,8 @@ function getFiltered() {
       (j.jobDescription || '').toLowerCase().includes(q)
     );
   }
-  if (currentTagFilter) {
-    jobs = jobs.filter(j => (j.tags || []).includes(currentTagFilter));
+  if (currentTagFilters.size) {
+    jobs = jobs.filter(j => [...currentTagFilters].every(t => (j.tags || []).includes(t)));
   }
   const STATUS_ORDER = { offer: 0, interview: 1, applied: 2, ghosted: 3, rejected: 4, archived: 5 };
   switch (trackerSort) {
@@ -521,6 +521,14 @@ function renderJobs() {
     tabEl.style.color = currentFilter === 'attention' ? '#fff' : attentionN > 0 ? '#92400e' : '';
     tabEl.style.display = attentionN > 0 || currentFilter === 'attention' ? '' : 'none';
   }
+  // Active tag filter chips
+  const tagChipsEl = document.getElementById('activeTagFilters');
+  if (tagChipsEl) {
+    tagChipsEl.innerHTML = currentTagFilters.size
+      ? [...currentTagFilters].map(t => `<span class="active-tag-chip" data-remove-tag="${t}">#${t} ✕</span>`).join('')
+        + `<span class="active-tag-chip active-tag-clear" data-clear-tags>Clear tags</span>`
+      : '';
+  }
   const jobs = getFiltered();
   const grid = document.getElementById('jobsGrid');
 
@@ -588,7 +596,7 @@ function renderJobs() {
             ${j.recruiterName ? `<div class="meta-item">👤 ${j.recruiterLinkedin ? `<a href="${j.recruiterLinkedin}" target="_blank" style="color:#2563eb;text-decoration:none">${j.recruiterName}</a>` : j.recruiterName}</div>` : ''}
             ${j.url ? `<div class="meta-item"><a href="${j.url}" target="_blank" style="color:#2563eb;text-decoration:none">🔗 View Job</a></div>` : ''}
           </div>
-          ${j.tags && j.tags.length ? `<div class="card-tags">${j.tags.map(t => `<span class="card-tag" data-tag="${t}">#${t}</span>`).join('')}</div>` : ''}
+          ${j.tags && j.tags.length ? `<div class="card-tags">${j.tags.map(t => `<span class="card-tag${currentTagFilters.has(t) ? ' card-tag-active' : ''}" data-tag="${t}">#${t}</span>`).join('')}</div>` : ''}
           ${(function() {
             if (!j.interviewDate) return '';
             const diff = Math.round((new Date(j.interviewDate) - Date.now()) / 86400000);
@@ -1377,8 +1385,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const tag = e.target.closest('.card-tag');
     if (!tag) return;
     const t = tag.dataset.tag;
-    currentTagFilter = currentTagFilter === t ? '' : t;
+    if (currentTagFilters.has(t)) currentTagFilters.delete(t);
+    else currentTagFilters.add(t);
     renderJobs();
+  });
+
+  // Active tag chips: remove single tag or clear all
+  document.getElementById('activeTagFilters').addEventListener('click', e => {
+    if (e.target.dataset.clearTags !== undefined) { currentTagFilters.clear(); renderJobs(); return; }
+    const t = e.target.dataset.removeTag;
+    if (t) { currentTagFilters.delete(t); renderJobs(); }
   });
 
   // Priority stars
