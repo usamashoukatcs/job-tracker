@@ -2804,4 +2804,23 @@ function renderAnalytics() {
         <div style="font-size:10px;color:#94a3b8;margin:-8px 0 10px 86px">${e.total} app${e.total !== 1 ? 's' : ''} · ${e.interviewed} interview${e.interviewed !== 1 ? 's' : ''}${e.offered ? ` · ${e.offered} offer${e.offered !== 1 ? 's' : ''}` : ''}</div>`)
       .join('')
     : '<div style="font-size:12px;color:#94a3b8">Add a resume version to your jobs to see performance data</div>';
+
+  // Why rejected / ghosted: tally statusReason across those statuses
+  const rejMap = {};
+  for (const j of jobs) {
+    if (!j.statusReason || !['rejected', 'ghosted'].includes(j.status)) continue;
+    rejMap[j.statusReason] = (rejMap[j.statusReason] || 0) + 1;
+  }
+  const rejEntries = Object.entries(rejMap)
+    .map(([reason, count]) => ({ reason, count }))
+    .sort((a, b) => b.count - a.count);
+  const maxRej = Math.max(...rejEntries.map(e => e.count), 1);
+  document.getElementById('rejectionChart').innerHTML = rejEntries.length
+    ? rejEntries.map(e => `
+        <div class="hbar-row">
+          <div class="hbar-label" title="${e.reason}">${e.reason.length > 20 ? e.reason.slice(0, 19) + '…' : e.reason}</div>
+          <div class="hbar-track"><div class="hbar-fill" style="width:${Math.round(e.count / maxRej * 100)}%;background:#ef4444"></div></div>
+          <div class="hbar-count">${e.count}</div>
+        </div>`).join('')
+    : '<div style="font-size:12px;color:#94a3b8">No rejection reasons logged yet — set a reason when marking jobs as rejected or ghosted</div>';
 }
