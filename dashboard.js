@@ -9,6 +9,7 @@ let settings = {};
 let currentFilter = 'all';
 let currentSearch = '';
 let currentTagFilters = new Set();
+let currentColorFilter = null;
 let followupJobId = null;
 let viewMode = 'list';
 let trackerSort = 'date-desc';
@@ -263,6 +264,7 @@ function send(type, extra = {}) {
 function setFilter(f, clickedEl) {
   currentFilter = f;
   currentTagFilters.clear();
+  currentColorFilter = null;
   document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.stat-card').forEach(t => t.classList.remove('active'));
   if (clickedEl) clickedEl.classList.add('active');
@@ -322,6 +324,9 @@ function getFiltered() {
   }
   if (currentTagFilters.size) {
     jobs = jobs.filter(j => [...currentTagFilters].every(t => (j.tags || []).includes(t)));
+  }
+  if (currentColorFilter !== null) {
+    jobs = jobs.filter(j => (j.colorLabel ?? null) === currentColorFilter);
   }
   const STATUS_ORDER = { offer: 0, interview: 1, applied: 2, ghosted: 3, rejected: 4, archived: 5 };
   switch (trackerSort) {
@@ -528,6 +533,18 @@ function renderJobs() {
       ? [...currentTagFilters].map(t => `<span class="active-tag-chip" data-remove-tag="${t}">#${t} ✕</span>`).join('')
         + `<span class="active-tag-chip active-tag-clear" data-clear-tags>Clear tags</span>`
       : '';
+  }
+  // Color label filter dots
+  const colorBarEl = document.getElementById('colorFilterBar');
+  if (colorBarEl) {
+    colorBarEl.innerHTML =
+      `<span class="color-filter-label">Label:</span>`
+      + LABEL_COLORS.slice(1).map((c, i) =>
+          `<button class="color-dot-btn${currentColorFilter === c ? ' color-dot-active' : ''}" data-color-filter="${c}" title="${LABEL_NAMES[i + 1]}" style="background:${c}"></button>`
+        ).join('')
+      + (currentColorFilter
+          ? `<button class="color-dot-clear" data-clear-color>✕ Clear</button>`
+          : '');
   }
   const jobs = getFiltered();
   const grid = document.getElementById('jobsGrid');
@@ -1395,6 +1412,13 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.target.dataset.clearTags !== undefined) { currentTagFilters.clear(); renderJobs(); return; }
     const t = e.target.dataset.removeTag;
     if (t) { currentTagFilters.delete(t); renderJobs(); }
+  });
+
+  // Color label filter bar
+  document.getElementById('colorFilterBar').addEventListener('click', e => {
+    if (e.target.dataset.clearColor !== undefined) { currentColorFilter = null; renderJobs(); return; }
+    const c = e.target.dataset.colorFilter;
+    if (c) { currentColorFilter = currentColorFilter === c ? null : c; renderJobs(); }
   });
 
   // Priority stars
@@ -2823,4 +2847,42 @@ function renderAnalytics() {
           <div class="hbar-count">${e.count}</div>
         </div>`).join('')
     : '<div style="font-size:12px;color:#94a3b8">No rejection reasons logged yet — set a reason when marking jobs as rejected or ghosted</div>';
+
+  // Recent activity feed
+  const activityEvents = [];
+  const STATUS_ICON = { applied: '📨', interview: '🗣', offer: '🎉', rejected: '❌', ghosted: '👻', archived: '🗄' };
+  const STATUS_COLOR = { applied: '#3b82f6', interview: '#a855f7', offer: '#22c55e', rejected: '#ef4444', ghosted: '#94a3b8', archived: '#94a3b8' };
+  for (const j of allJobs) {
+    if (j.appliedDate) {
+      activityEvents.push({ date: new Date(j.appliedDate), type: 'applied', label: `Applied to ${j.title}`, sub: j.company });
+    }
+    if (j.statusUpdated && j.statusUpdated !== j.appliedDate && j.status !== 'applied') {
+      activityEvents.push({ date: new Date(j.statusUpdated), type: j.status, label: `${j.status.charAt(0).toUpperCase() + j.status.slice(1)}: ${j.title}`, sub: j.company });
+    }
+    for (const ev of (j.events || [])) {
+      if (ev.date) activityEvents.push({ date: new Date(ev.date), type: ev.type || 'interview', label: `${ev.type || 'Event'}: ${j.title}`, sub: j.company });
+    }
+  }
+  activityEvents.sort((a, b) => b.date - a.date);
+  const recent = activityEvents.slice(0, 15);
+  const feedEl = document.getElementById('activityFeed');
+  if (feedEl) {
+    feedEl.innerHTML = recent.length
+      ? recent.map(ev => {
+          const now = Date.now();
+          const diff = Math.round((now - ev.date.getTime()) / 86400000);
+          const dateStr = diff === 0 ? 'Today' : diff === 1 ? 'Yesterday' : diff < 7 ? `${diff}d ago` : ev.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+          const icon = STATUS_ICON[ev.type] || '📌';
+          const color = STATUS_COLOR[ev.type] || '#64748b';
+          return `<div class="activity-row">
+            <span class="activity-icon">${icon}</span>
+            <div class="activity-body">
+              <span class="activity-label">${ev.label}</span>
+              <span class="activity-sub">${ev.sub}</span>
+            </div>
+            <span class="activity-date" style="color:${color}">${dateStr}</span>
+          </div>`;
+        }).join('')
+      : '<div style="font-size:12px;color:#94a3b8">No activity yet — start applying to see your timeline here</div>';
+  }
 }
