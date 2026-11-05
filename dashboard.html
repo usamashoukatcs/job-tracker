@@ -1392,6 +1392,10 @@ body[data-theme="dark"] #themePickerLabel { color:#64748b; }
       </div>
     </div>
     <div class="chart-card" style="margin-top:16px">
+      <div class="chart-title">Top Companies Applied To</div>
+      <div id="companiesChart"></div>
+    </div>
+    <div class="chart-card" style="margin-top:16px">
       <div class="chart-title">Top Tags</div>
       <div id="tagChart"></div>
     </div>
@@ -1531,6 +1535,10 @@ body[data-theme="dark"] #themePickerLabel { color:#64748b; }
       <div class="form-group">
         <label>Interview Prep <span style="font-weight:400;color:#94a3b8">(questions to ask, things to research)</span></label>
         <textarea id="fPrep" placeholder="Research their Go stack… Ask about team size… Review system design…" style="min-height:80px"></textarea>
+      </div>
+      <div class="form-group">
+        <label>Cover Letter <span style="font-weight:400;color:#94a3b8">(your tailored letter for this role)</span></label>
+        <textarea id="fCoverLetter" placeholder="Dear Hiring Manager, I'm excited to apply for…" style="min-height:100px"></textarea>
       </div>
       <div class="modal-footer">
         <button class="btn btn-ghost" id="cancelModalBtn">Cancel</button>

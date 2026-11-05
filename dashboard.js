@@ -199,7 +199,7 @@ function parseCsvToJobs(text) {
 function exportCsv(jobsToExport) {
   const jobs = jobsToExport || allJobs;
   if (!jobs.length) { showToast('No jobs to export.', 'error'); return; }
-  const headers = ['Title', 'Company', 'Status', 'Applied Date', 'Method', 'URL', 'Salary', 'Resume Version', 'Recruiter', 'Recruiter LinkedIn', 'Tags', 'Notes', 'Prep Notes'];
+  const headers = ['Title', 'Company', 'Status', 'Applied Date', 'Method', 'URL', 'Salary', 'Resume Version', 'Recruiter', 'Recruiter LinkedIn', 'Tags', 'Notes', 'Prep Notes', 'Cover Letter'];
   const rows = jobs.map(j => [
     j.title || '',
     j.company || '',
@@ -214,6 +214,7 @@ function exportCsv(jobsToExport) {
     (j.tags || []).join('; '),
     (j.notes || '').replace(/\r?\n/g, ' '),
     (j.prepNotes || '').replace(/\r?\n/g, ' '),
+    (j.coverLetter || '').replace(/\r?\n/g, ' '),
   ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(','));
   const csv = [headers.join(','), ...rows].join('\n');
   const blob = new Blob([csv], { type: 'text/csv' });
@@ -651,6 +652,9 @@ function renderJobs() {
           ${j.prepNotes ? `
             <span class="card-prep-toggle" data-prep-id="${j.id}">📋 Interview Prep ▾</span>
             <div class="card-prep" id="prep-${j.id}" style="display:none;margin:0 16px 10px">${j.prepNotes.replace(/\n/g,'<br>')}</div>` : ''}
+          ${j.coverLetter ? `
+            <span class="card-prep-toggle" data-cl-id="${j.id}">✉ Cover Letter ▾</span>
+            <div class="card-prep" id="cl-${j.id}" style="display:none;margin:0 16px 10px;color:#475569">${j.coverLetter.replace(/\n/g,'<br>')}</div>` : ''}
           ${events.length > 0 ? `<div class="timeline"><div class="timeline-title">History</div>${timeline}</div>` : ''}
           <div class="quick-note-row">
             <input class="quick-note-input" data-job-id="${j.id}" placeholder="+ Quick note…" type="text" maxlength="200">
@@ -969,6 +973,7 @@ async function duplicateJob(id) {
     notes: job.notes || '',
     jobDescription: job.jobDescription || '',
     prepNotes: job.prepNotes || '',
+    coverLetter: job.coverLetter || '',
     interviewDate: null,
     followupDate: null,
     deadline: null,
@@ -1021,6 +1026,7 @@ function openAddModal(prefill) {
   document.getElementById('fDeadline').value     = '';
   document.getElementById('fJobDesc').value     = '';
   document.getElementById('fPrep').value        = '';
+  document.getElementById('fCoverLetter').value = '';
   document.getElementById('addModal').style.display = 'flex';
 }
 
@@ -1047,6 +1053,7 @@ function editJob(id) {
   document.getElementById('fDeadline').value     = j.deadline ? j.deadline.slice(0, 10) : '';
   document.getElementById('fJobDesc').value      = j.jobDescription || '';
   document.getElementById('fPrep').value         = j.prepNotes || '';
+  document.getElementById('fCoverLetter').value  = j.coverLetter || '';
   document.getElementById('addModal').style.display = 'flex';
 }
 
@@ -1089,7 +1096,8 @@ async function saveJob() {
     followupDate:   document.getElementById('fFollowupDate').value || null,
     deadline:       document.getElementById('fDeadline').value || null,
     jobDescription: document.getElementById('fJobDesc').value.trim(),
-    prepNotes:      document.getElementById('fPrep').value.trim()
+    prepNotes:      document.getElementById('fPrep').value.trim(),
+    coverLetter:    document.getElementById('fCoverLetter').value.trim()
   };
 
   if (id) {
@@ -1390,7 +1398,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!toggle) return;
     const prepId = toggle.dataset.prepId;
     const jdId   = toggle.dataset.jdId;
-    const panel  = prepId ? document.getElementById(`prep-${prepId}`) : document.getElementById(`jd-${jdId}`);
+    const clId   = toggle.dataset.clId;
+    const panel  = prepId ? document.getElementById(`prep-${prepId}`) : clId ? document.getElementById(`cl-${clId}`) : document.getElementById(`jd-${jdId}`);
     if (!panel) return;
     const open = panel.style.display !== 'none';
     panel.style.display = open ? 'none' : 'block';
@@ -2765,6 +2774,32 @@ function renderAnalytics() {
       if (j.status === 'offer') tagMap[t].offered++;
     });
   });
+  // Top companies chart
+  const companyMap = {};
+  for (const j of jobs) {
+    const c = (j.company || '').trim();
+    if (!c) continue;
+    if (!companyMap[c]) companyMap[c] = { total: 0, interviewed: 0, offered: 0 };
+    companyMap[c].total++;
+    if (['interview','offer'].includes(j.status)) companyMap[c].interviewed++;
+    if (j.status === 'offer') companyMap[c].offered++;
+  }
+  const companies = Object.entries(companyMap)
+    .map(([name, d]) => ({ name, ...d }))
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 10);
+  const maxCoCount = companies.length ? companies[0].total : 1;
+  document.getElementById('companiesChart').innerHTML = companies.length
+    ? companies.map(c => {
+        const badge = c.offered ? ' 🎉' : c.interviewed ? ' 🗣' : '';
+        return `<div class="hbar-row">
+          <div class="hbar-label" title="${c.name}">${c.name.length > 18 ? c.name.slice(0, 17) + '…' : c.name}${badge}</div>
+          <div class="hbar-track"><div class="hbar-fill" style="width:${Math.round(c.total/maxCoCount*100)}%;background:#0891b2"></div></div>
+          <div class="hbar-count">${c.total}</div>
+        </div>`;
+      }).join('')
+    : '<div style="font-size:12px;color:#94a3b8">No applications yet</div>';
+
   const tags = Object.entries(tagMap)
     .map(([tag, d]) => ({ tag, ...d, rate: d.total ? Math.round(d.interviewed / d.total * 100) : 0 }))
     .sort((a, b) => b.total - a.total)
