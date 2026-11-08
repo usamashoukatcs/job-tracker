@@ -291,6 +291,15 @@ body {
 .activity-label { display: block; font-size: 13px; font-weight: 600; color: #1e293b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .activity-sub { display: block; font-size: 11px; color: #94a3b8; }
 .activity-date { font-size: 11px; font-weight: 600; white-space: nowrap; flex-shrink: 0; }
+.salary-kpi-row { display: flex; gap: 10px; margin-bottom: 14px; }
+.salary-kpi { flex: 1; text-align: center; background: #f8fafc; border-radius: 8px; padding: 8px 4px; }
+.salary-kpi-val { font-size: 15px; font-weight: 700; color: #22c55e; }
+.salary-kpi-lbl { font-size: 10px; color: #94a3b8; margin-top: 2px; }
+.matrix-grid { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 6px; }
+.matrix-cell { border-radius: 8px; padding: 10px 12px; min-height: 70px; }
+.matrix-cell-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; margin-bottom: 4px; }
+.matrix-cell-count { font-size: 22px; font-weight: 800; line-height: 1; }
+.matrix-cell-jobs { font-size: 10px; margin-top: 4px; opacity: .75; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .card-prep { font-size: 12px; color: #7c3aed; background: #faf5ff; border-left: 3px solid #a78bfa; border-radius: 0 6px 6px 0; padding: 8px 10px; margin-bottom: 10px; white-space: pre-wrap; }
 .card-prep-toggle { font-size: 11px; color: #7c3aed; cursor: pointer; padding: 0 16px 8px; display: block; font-weight: 600; }
 .card-prep-toggle:hover { text-decoration: underline; }
@@ -1030,6 +1039,8 @@ body[data-theme="dark"] .hbar-track { background: #334155; }
 body[data-theme="dark"] .hbar-count { color: #64748b; }
 body[data-theme="dark"] .color-dot-active { border-color: #e2e8f0; }
 body[data-theme="dark"] .activity-row { border-bottom-color: #334155; }
+body[data-theme="dark"] .salary-kpi { background: #0f172a; }
+body[data-theme="dark"] .salary-kpi-val { color: #4ade80; }
 body[data-theme="dark"] .activity-label { color: #e2e8f0; }
 
 body[data-theme="dark"] #searchSettingsPanel {
@@ -1389,6 +1400,16 @@ body[data-theme="dark"] #themePickerLabel { color:#64748b; }
       <div class="chart-card">
         <div class="chart-title">Best Days to Apply</div>
         <div id="dowChart"></div>
+      </div>
+    </div>
+    <div class="charts-row" style="margin-top:16px">
+      <div class="chart-card">
+        <div class="chart-title">Salary Overview</div>
+        <div id="salaryStats"></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Priority Matrix — Interest × Confidence</div>
+        <div id="priorityMatrix"></div>
       </div>
     </div>
     <div class="chart-card" style="margin-top:16px">

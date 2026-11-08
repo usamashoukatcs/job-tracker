@@ -2495,6 +2495,26 @@ function calcStreak(jobs) {
   return streak;
 }
 
+function parseSalary(s) {
+  if (!s) return null;
+  const clean = s.replace(/[,\s]/g, '').toLowerCase();
+  // range: "50k-70k", "50000-70000", "$50k-$80k"
+  const range = clean.match(/\$?(\d+(?:\.\d+)?)(k?)-\$?(\d+(?:\.\d+)?)(k?)/);
+  if (range) {
+    let lo = parseFloat(range[1]) * (range[2] === 'k' ? 1000 : 1);
+    let hi = parseFloat(range[3]) * (range[4] === 'k' ? 1000 : 1);
+    if (lo < 1000) lo *= 1000;
+    if (hi < 1000) hi *= 1000;
+    return (lo + hi) / 2;
+  }
+  // single: "50k", "$80000", "120k"
+  const single = clean.match(/\$?(\d+(?:\.\d+)?)(k?)/);
+  if (!single) return null;
+  let v = parseFloat(single[1]) * (single[2] === 'k' ? 1000 : 1);
+  if (v < 1000) v *= 1000;
+  return v > 500000 ? null : v; // sanity cap
+}
+
 function renderAnalytics() {
   renderGoal();
   const jobs = allJobs;
@@ -2919,5 +2939,68 @@ function renderAnalytics() {
           </div>`;
         }).join('')
       : '<div style="font-size:12px;color:#94a3b8">No activity yet — start applying to see your timeline here</div>';
+  }
+
+  // Salary stats
+  const salaries = jobs.map(j => parseSalary(j.salary)).filter(v => v !== null);
+  const salaryEl = document.getElementById('salaryStats');
+  if (salaryEl) {
+    if (salaries.length === 0) {
+      salaryEl.innerHTML = '<div style="font-size:12px;color:#94a3b8">No salary data yet — add salaries when you apply to see stats here</div>';
+    } else {
+      const avg = Math.round(salaries.reduce((a, b) => a + b, 0) / salaries.length);
+      const min = Math.min(...salaries);
+      const max = Math.max(...salaries);
+      const fmt = v => v >= 1000 ? `$${Math.round(v / 1000)}k` : `$${v}`;
+      const bands = [
+        { label: '<$50k',      lo: 0,       hi: 50000  },
+        { label: '$50–80k',   lo: 50000,   hi: 80000  },
+        { label: '$80–120k',  lo: 80000,   hi: 120000 },
+        { label: '$120–150k', lo: 120000,  hi: 150000 },
+        { label: '$150k+',    lo: 150000,  hi: Infinity },
+      ];
+      const bandCounts = bands.map(b => salaries.filter(v => v >= b.lo && v < b.hi).length);
+      const maxBand = Math.max(...bandCounts, 1);
+      salaryEl.innerHTML =
+        `<div class="salary-kpi-row">
+          <div class="salary-kpi"><div class="salary-kpi-val">${fmt(avg)}</div><div class="salary-kpi-lbl">Average</div></div>
+          <div class="salary-kpi"><div class="salary-kpi-val" style="color:#3b82f6">${fmt(min)}</div><div class="salary-kpi-lbl">Min</div></div>
+          <div class="salary-kpi"><div class="salary-kpi-val" style="color:#a855f7">${fmt(max)}</div><div class="salary-kpi-lbl">Max</div></div>
+          <div class="salary-kpi"><div class="salary-kpi-val" style="color:#64748b">${salaries.length}</div><div class="salary-kpi-lbl">Jobs with data</div></div>
+        </div>`
+        + bands.map((b, i) => bandCounts[i] === 0 ? '' : `
+          <div class="hbar-row">
+            <div class="hbar-label">${b.label}</div>
+            <div class="hbar-track"><div class="hbar-fill" style="width:${Math.round(bandCounts[i]/maxBand*100)}%;background:#22c55e"></div></div>
+            <div class="hbar-count">${bandCounts[i]}</div>
+          </div>`).join('');
+    }
+  }
+
+  // Priority matrix (interest × confidence)
+  const matrixEl = document.getElementById('priorityMatrix');
+  if (matrixEl) {
+    const withRatings = jobs.filter(j => !['rejected','archived','ghosted'].includes(j.status) && (j.interest || j.confidence));
+    if (!withRatings.length) {
+      matrixEl.innerHTML = '<div style="font-size:12px;color:#94a3b8">No ratings yet — set interest and confidence on your jobs to see the matrix</div>';
+    } else {
+      const quad = (hi_i, hi_c) => withRatings.filter(j =>
+        (hi_i ? (j.interest || 0) >= 4 : (j.interest || 0) < 4) &&
+        (hi_c ? (j.confidence || 0) >= 4 : (j.confidence || 0) < 4)
+      );
+      const q = [
+        { jobs: quad(true, true),   title: '🌟 Top Picks',    bg: '#dcfce7', color: '#166534' },
+        { jobs: quad(true, false),  title: '🚀 Stretch',      bg: '#fef9c3', color: '#854d0e' },
+        { jobs: quad(false, true),  title: '🛡 Safety Net',   bg: '#dbeafe', color: '#1e40af' },
+        { jobs: quad(false, false), title: '📋 Filler',       bg: '#f1f5f9', color: '#475569' },
+      ];
+      matrixEl.innerHTML = `<div class="matrix-grid">${q.map(cell => `
+        <div class="matrix-cell" style="background:${cell.bg};color:${cell.color}">
+          <div class="matrix-cell-title">${cell.title}</div>
+          <div class="matrix-cell-count">${cell.jobs.length}</div>
+          <div class="matrix-cell-jobs">${cell.jobs.slice(0, 3).map(j => j.company).join(', ')}</div>
+        </div>`).join('')}</div>
+        <div style="font-size:10px;color:#94a3b8;margin-top:6px">High = 4–5 stars &nbsp;|&nbsp; Rows: interest &nbsp;|&nbsp; Cols: confidence</div>`;
+    }
   }
 }
