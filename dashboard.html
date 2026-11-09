@@ -1225,6 +1225,12 @@ body[data-theme="dark"] #themePickerLabel { color:#64748b; }
     <div class="view-toggle">
       <button class="view-btn active" id="viewList">☰ List</button>
       <button class="view-btn" id="viewKanban">⬜ Board</button>
+      <select class="finder-select" id="workTypeFilter" title="Filter by work type">
+        <option value="">All Types</option>
+        <option value="Remote">🏠 Remote</option>
+        <option value="Hybrid">🔀 Hybrid</option>
+        <option value="On-site">🏢 On-site</option>
+      </select>
       <select class="finder-select" id="trackerSort" title="Sort jobs">
         <option value="date-desc">Newest first</option>
         <option value="date-asc">Oldest first</option>
@@ -1432,6 +1438,10 @@ body[data-theme="dark"] #themePickerLabel { color:#64748b; }
       <div class="chart-title">Recent Activity</div>
       <div id="activityFeed"></div>
     </div>
+    <div class="chart-card" style="margin-top:16px">
+      <div class="chart-title">Interview Round Breakdown</div>
+      <div id="roundChart"></div>
+    </div>
   </div>
 
   <!-- ── Notes / Journal panel ───────────────────────────────────── -->
@@ -1498,6 +1508,21 @@ body[data-theme="dark"] #themePickerLabel { color:#64748b; }
             <option value="email">Email</option>
             <option value="linkedin">LinkedIn</option>
             <option value="referral">Referral</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Location <span style="font-weight:400;color:#94a3b8">(city, country, or "Remote")</span></label>
+          <input id="fLocation" placeholder="London, UK">
+        </div>
+        <div class="form-group">
+          <label>Work Type</label>
+          <select id="fWorkType">
+            <option value="">Not specified</option>
+            <option value="Remote">🏠 Remote</option>
+            <option value="Hybrid">🔀 Hybrid</option>
+            <option value="On-site">🏢 On-site</option>
           </select>
         </div>
       </div>

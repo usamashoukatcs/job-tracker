@@ -10,6 +10,7 @@ let currentFilter = 'all';
 let currentSearch = '';
 let currentTagFilters = new Set();
 let currentColorFilter = null;
+let currentWorkTypeFilter = '';
 let followupJobId = null;
 let viewMode = 'list';
 let trackerSort = 'date-desc';
@@ -199,7 +200,7 @@ function parseCsvToJobs(text) {
 function exportCsv(jobsToExport) {
   const jobs = jobsToExport || allJobs;
   if (!jobs.length) { showToast('No jobs to export.', 'error'); return; }
-  const headers = ['Title', 'Company', 'Status', 'Applied Date', 'Method', 'URL', 'Salary', 'Resume Version', 'Recruiter', 'Recruiter LinkedIn', 'Tags', 'Notes', 'Prep Notes', 'Cover Letter'];
+  const headers = ['Title', 'Company', 'Status', 'Applied Date', 'Method', 'URL', 'Location', 'Work Type', 'Salary', 'Resume Version', 'Recruiter', 'Recruiter LinkedIn', 'Tags', 'Notes', 'Prep Notes', 'Cover Letter'];
   const rows = jobs.map(j => [
     j.title || '',
     j.company || '',
@@ -207,6 +208,8 @@ function exportCsv(jobsToExport) {
     j.appliedDate ? new Date(j.appliedDate).toLocaleDateString('en-US') : '',
     j.applicationMethod || '',
     j.url || '',
+    j.location || '',
+    j.workType || '',
     j.salary || '',
     j.resumeVersion || '',
     j.recruiterName || '',
@@ -266,6 +269,9 @@ function setFilter(f, clickedEl) {
   currentFilter = f;
   currentTagFilters.clear();
   currentColorFilter = null;
+  currentWorkTypeFilter = '';
+  const wtSel = document.getElementById('workTypeFilter');
+  if (wtSel) wtSel.value = '';
   document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.stat-card').forEach(t => t.classList.remove('active'));
   if (clickedEl) clickedEl.classList.add('active');
@@ -328,6 +334,9 @@ function getFiltered() {
   }
   if (currentColorFilter !== null) {
     jobs = jobs.filter(j => (j.colorLabel ?? null) === currentColorFilter);
+  }
+  if (currentWorkTypeFilter) {
+    jobs = jobs.filter(j => (j.workType || '') === currentWorkTypeFilter);
   }
   const STATUS_ORDER = { offer: 0, interview: 1, applied: 2, ghosted: 3, rejected: 4, archived: 5 };
   switch (trackerSort) {
@@ -610,6 +619,8 @@ function renderJobs() {
             <div class="meta-item">📅 ${fmtDate(j.appliedDate)}</div>
             <div class="meta-item">${methodIcon}</div>
             ${j.salary ? `<div class="meta-item">💰 ${j.salary}</div>` : ''}
+            ${j.workType ? `<div class="meta-item">${j.workType === 'Remote' ? '🏠' : j.workType === 'Hybrid' ? '🔀' : '🏢'} ${j.workType}</div>` : ''}
+            ${j.location ? `<div class="meta-item">📍 ${j.location}</div>` : ''}
             ${j.resumeVersion ? `<div class="meta-item" title="Resume version">📄 ${j.resumeVersion}</div>` : ''}
             ${j.recruiterName ? `<div class="meta-item">👤 ${j.recruiterLinkedin ? `<a href="${j.recruiterLinkedin}" target="_blank" style="color:#2563eb;text-decoration:none">${j.recruiterName}</a>` : j.recruiterName}</div>` : ''}
             ${j.url ? `<div class="meta-item"><a href="${j.url}" target="_blank" style="color:#2563eb;text-decoration:none">🔗 View Job</a></div>` : ''}
@@ -971,6 +982,8 @@ async function duplicateJob(id) {
     recruiterLinkedin: job.recruiterLinkedin || '',
     contactEmail: job.contactEmail || '',
     notes: job.notes || '',
+    location: job.location || '',
+    workType: job.workType || '',
     jobDescription: job.jobDescription || '',
     prepNotes: job.prepNotes || '',
     coverLetter: job.coverLetter || '',
@@ -1021,6 +1034,8 @@ function openAddModal(prefill) {
   document.getElementById('fRecruiterName').value    = '';
   document.getElementById('fRecruiterLinkedin').value= '';
   document.getElementById('fEmail').value            = '';
+  document.getElementById('fLocation').value    = '';
+  document.getElementById('fWorkType').value    = '';
   document.getElementById('fNotes').value       = '';
   document.getElementById('fFollowupDate').value = '';
   document.getElementById('fDeadline').value     = '';
@@ -1048,6 +1063,8 @@ function editJob(id) {
   document.getElementById('fRecruiterName').value     = j.recruiterName || '';
   document.getElementById('fRecruiterLinkedin').value = j.recruiterLinkedin || '';
   document.getElementById('fEmail').value             = j.contactEmail || '';
+  document.getElementById('fLocation').value    = j.location || '';
+  document.getElementById('fWorkType').value    = j.workType || '';
   document.getElementById('fNotes').value       = j.notes || '';
   document.getElementById('fFollowupDate').value = j.followupDate ? j.followupDate.slice(0, 10) : '';
   document.getElementById('fDeadline').value     = j.deadline ? j.deadline.slice(0, 10) : '';
@@ -1095,6 +1112,8 @@ async function saveJob() {
     notes:        document.getElementById('fNotes').value.trim(),
     followupDate:   document.getElementById('fFollowupDate').value || null,
     deadline:       document.getElementById('fDeadline').value || null,
+    location:       document.getElementById('fLocation').value.trim(),
+    workType:       document.getElementById('fWorkType').value,
     jobDescription: document.getElementById('fJobDesc').value.trim(),
     prepNotes:      document.getElementById('fPrep').value.trim(),
     coverLetter:    document.getElementById('fCoverLetter').value.trim()
@@ -1593,6 +1612,11 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('viewKanban').addEventListener('click', () => setViewMode('kanban'));
   document.getElementById('trackerSort').addEventListener('change', e => {
     trackerSort = e.target.value;
+    if (viewMode === 'kanban') renderKanban(); else renderJobs();
+  });
+
+  document.getElementById('workTypeFilter').addEventListener('change', e => {
+    currentWorkTypeFilter = e.target.value;
     if (viewMode === 'kanban') renderKanban(); else renderJobs();
   });
 
@@ -2975,6 +2999,29 @@ function renderAnalytics() {
             <div class="hbar-count">${bandCounts[i]}</div>
           </div>`).join('');
     }
+  }
+
+  // Interview round breakdown
+  const roundEl = document.getElementById('roundChart');
+  if (roundEl) {
+    const ROUND_TYPES = ['Phone Screen', 'Technical', 'System Design', 'Behavioral', 'Final Round', 'HR', 'Take-home'];
+    const roundCounts = {};
+    for (const j of jobs) {
+      for (const ev of (j.events || [])) {
+        if (ROUND_TYPES.includes(ev.type)) roundCounts[ev.type] = (roundCounts[ev.type] || 0) + 1;
+      }
+    }
+    const roundEntries = ROUND_TYPES.map(r => ({ type: r, count: roundCounts[r] || 0 })).filter(r => r.count > 0).sort((a, b) => b.count - a.count);
+    const maxRound = Math.max(...roundEntries.map(r => r.count), 1);
+    const ROUND_COLORS = { 'Phone Screen': '#6366f1', 'Technical': '#ef4444', 'System Design': '#f97316', 'Behavioral': '#eab308', 'Final Round': '#22c55e', 'HR': '#3b82f6', 'Take-home': '#a855f7' };
+    roundEl.innerHTML = roundEntries.length
+      ? roundEntries.map(r => `
+          <div class="hbar-row">
+            <div class="hbar-label" title="${r.type}">${r.type.length > 14 ? r.type.slice(0, 13) + '…' : r.type}</div>
+            <div class="hbar-track"><div class="hbar-fill" style="width:${Math.round(r.count/maxRound*100)}%;background:${ROUND_COLORS[r.type] || '#64748b'}"></div></div>
+            <div class="hbar-count">${r.count}</div>
+          </div>`).join('')
+      : '<div style="font-size:12px;color:#94a3b8">No interview rounds logged yet — use the 🎙 Round button on jobs in the Interview stage</div>';
   }
 
   // Priority matrix (interest × confidence)
