@@ -230,6 +230,37 @@ function exportCsv(jobsToExport) {
   URL.revokeObjectURL(url);
 }
 
+function exportJson() {
+  const json = JSON.stringify(allJobs, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = `jobs-backup-${new Date().toISOString().split('T')[0]}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast(`Backup saved — ${allJobs.length} job${allJobs.length !== 1 ? 's' : ''}`, 'success');
+}
+
+async function restoreJson(file) {
+  const text = await file.text();
+  let jobs;
+  try { jobs = JSON.parse(text); } catch { showToast('Invalid JSON file.', 'error'); return; }
+  if (!Array.isArray(jobs) || !jobs.length) { showToast('File contains no jobs.', 'error'); return; }
+  const replace = confirm(
+    `Found ${jobs.length} job${jobs.length !== 1 ? 's' : ''} in backup.\n\n` +
+    `OK = Replace ALL existing jobs with backup\n` +
+    `Cancel = Merge (add backup jobs without deleting existing ones)`
+  );
+  if (replace) {
+    await send('REPLACE_ALL_JOBS', { jobs });
+  } else {
+    for (const job of jobs) await send('ADD_JOB', { job: { ...job, id: Date.now().toString() + Math.random().toString(36).slice(2) } });
+  }
+  await reload();
+  showToast(`Restored ${jobs.length} job${jobs.length !== 1 ? 's' : ''}`, 'success');
+}
+
 function initials(company) {
   return (company || '?').split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase();
 }
@@ -517,6 +548,7 @@ function renderOfferCompare() {
             ${j.salary ? `<div class="offer-card-row">💰 ${j.salary}</div>` : ''}
             ${j.applicationMethod ? `<div class="offer-card-row">📬 ${j.applicationMethod}</div>` : ''}
             ${j.tags && j.tags.length ? `<div class="offer-card-row">🏷 ${j.tags.map(t => '#' + t).join(' ')}</div>` : ''}
+            ${j.offerDetails ? `<div class="offer-card-row" style="color:#166534;white-space:pre-wrap">${j.offerDetails.slice(0, 120)}${j.offerDetails.length > 120 ? '…' : ''}</div>` : ''}
             ${j.notes ? `<div class="offer-card-row" style="color:#64748b;font-style:italic">${j.notes.slice(0, 80)}${j.notes.length > 80 ? '…' : ''}</div>` : ''}
           </div>`).join('')}
       </div>
@@ -666,6 +698,9 @@ function renderJobs() {
           ${j.coverLetter ? `
             <span class="card-prep-toggle" data-cl-id="${j.id}">✉ Cover Letter ▾</span>
             <div class="card-prep" id="cl-${j.id}" style="display:none;margin:0 16px 10px;color:#475569">${j.coverLetter.replace(/\n/g,'<br>')}</div>` : ''}
+          ${j.offerDetails ? `
+            <span class="card-prep-toggle" data-od-id="${j.id}">💰 Offer Details ▾</span>
+            <div class="card-prep" id="od-${j.id}" style="display:none;margin:0 16px 10px;color:#166534;background:#f0fdf4;border-radius:6px;padding:8px 12px">${j.offerDetails.replace(/\n/g,'<br>')}</div>` : ''}
           ${events.length > 0 ? `<div class="timeline"><div class="timeline-title">History</div>${timeline}</div>` : ''}
           <div class="quick-note-row">
             <input class="quick-note-input" data-job-id="${j.id}" placeholder="+ Quick note…" type="text" maxlength="200">
@@ -984,6 +1019,7 @@ async function duplicateJob(id) {
     notes: job.notes || '',
     location: job.location || '',
     workType: job.workType || '',
+    offerDetails: job.offerDetails || '',
     jobDescription: job.jobDescription || '',
     prepNotes: job.prepNotes || '',
     coverLetter: job.coverLetter || '',
@@ -1037,6 +1073,7 @@ function openAddModal(prefill) {
   document.getElementById('fLocation').value    = '';
   document.getElementById('fWorkType').value    = '';
   document.getElementById('fNotes').value       = '';
+  document.getElementById('fOfferDetails').value = '';
   document.getElementById('fFollowupDate').value = '';
   document.getElementById('fDeadline').value     = '';
   document.getElementById('fJobDesc').value     = '';
@@ -1066,6 +1103,7 @@ function editJob(id) {
   document.getElementById('fLocation').value    = j.location || '';
   document.getElementById('fWorkType').value    = j.workType || '';
   document.getElementById('fNotes').value       = j.notes || '';
+  document.getElementById('fOfferDetails').value = j.offerDetails || '';
   document.getElementById('fFollowupDate').value = j.followupDate ? j.followupDate.slice(0, 10) : '';
   document.getElementById('fDeadline').value     = j.deadline ? j.deadline.slice(0, 10) : '';
   document.getElementById('fJobDesc').value      = j.jobDescription || '';
@@ -1114,6 +1152,7 @@ async function saveJob() {
     deadline:       document.getElementById('fDeadline').value || null,
     location:       document.getElementById('fLocation').value.trim(),
     workType:       document.getElementById('fWorkType').value,
+    offerDetails:   document.getElementById('fOfferDetails').value.trim(),
     jobDescription: document.getElementById('fJobDesc').value.trim(),
     prepNotes:      document.getElementById('fPrep').value.trim(),
     coverLetter:    document.getElementById('fCoverLetter').value.trim()
@@ -1229,6 +1268,17 @@ document.addEventListener('DOMContentLoaded', () => {
   document.addEventListener('click', e => {
     if (!pickerEl.contains(e.target) && e.target !== pickerBtn) pickerEl.classList.remove('open');
   });
+  document.getElementById('backupJsonBtn').addEventListener('click', exportJson);
+  document.getElementById('restoreJsonBtn').addEventListener('click', () => {
+    document.getElementById('restoreJsonFile').value = '';
+    document.getElementById('restoreJsonFile').click();
+  });
+  document.getElementById('restoreJsonFile').addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (file) restoreJson(file);
+    e.target.value = '';
+  });
+
   document.getElementById('exportCsvBtn').addEventListener('click', () => {
     const filtered = getFiltered();
     if (currentFilter !== 'all' && filtered.length < allJobs.length) {
@@ -1418,7 +1468,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const prepId = toggle.dataset.prepId;
     const jdId   = toggle.dataset.jdId;
     const clId   = toggle.dataset.clId;
-    const panel  = prepId ? document.getElementById(`prep-${prepId}`) : clId ? document.getElementById(`cl-${clId}`) : document.getElementById(`jd-${jdId}`);
+    const odId   = toggle.dataset.odId;
+    const panel  = prepId ? document.getElementById(`prep-${prepId}`) : clId ? document.getElementById(`cl-${clId}`) : odId ? document.getElementById(`od-${odId}`) : document.getElementById(`jd-${jdId}`);
     if (!panel) return;
     const open = panel.style.display !== 'none';
     panel.style.display = open ? 'none' : 'block';

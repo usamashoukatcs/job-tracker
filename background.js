@@ -417,6 +417,11 @@ chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
         reply({ ok: true });
         break;
       }
+      case 'REPLACE_ALL_JOBS': {
+        await saveJobs(msg.jobs);
+        reply({ ok: true });
+        break;
+      }
       case 'GET_WISHLIST': {
         const r = await chrome.storage.local.get('wishlist');
         reply({ items: r.wishlist || [] });

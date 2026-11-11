@@ -1143,6 +1143,9 @@ body[data-theme="dark"] #themePickerLabel { color:#64748b; }
       <button class="tb-btn" id="darkModeBtn" title="Toggle dark mode">🌙</button>
       <button class="tb-btn" id="importCsvBtn" title="Import jobs from CSV">⬆ Import</button>
       <button class="tb-btn" id="exportCsvBtn" title="Export tracked jobs to CSV">⬇ Export</button>
+      <button class="tb-btn" id="backupJsonBtn" title="Download a full lossless backup (JSON)">💾 Backup</button>
+      <button class="tb-btn" id="restoreJsonBtn" title="Restore from a JSON backup file">📂 Restore</button>
+      <input type="file" id="restoreJsonFile" accept=".json" style="display:none">
       <button class="tb-btn" id="printBtn" title="Print current job list">🖨 Print</button>
       <button class="tb-btn" id="settingsNavBtn">⚙ Settings</button>
       <button class="tb-btn accent" id="addJobBtn">+ Add Job</button>
@@ -1577,6 +1580,10 @@ body[data-theme="dark"] #themePickerLabel { color:#64748b; }
       <div class="form-group">
         <label>Notes</label>
         <textarea id="fNotes" placeholder="Anything worth remembering about this role…"></textarea>
+      </div>
+      <div class="form-group">
+        <label>Offer / Negotiation Notes <span style="font-weight:400;color:#94a3b8">(base, bonus, equity, counter-offer log — for offer-stage jobs)</span></label>
+        <textarea id="fOfferDetails" placeholder="Base: $130k · Bonus: 10% · Equity: 10k RSUs · Counter: asked for $145k…" style="min-height:80px"></textarea>
       </div>
       <div class="form-group">
         <label>Interview Prep <span style="font-weight:400;color:#94a3b8">(questions to ask, things to research)</span></label>
