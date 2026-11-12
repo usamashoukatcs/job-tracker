@@ -261,6 +261,62 @@ async function restoreJson(file) {
   showToast(`Restored ${jobs.length} job${jobs.length !== 1 ? 's' : ''}`, 'success');
 }
 
+function icsEscape(text) {
+  return String(text || '').replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
+}
+
+function icsDate(iso) {
+  return iso.slice(0, 10).replace(/-/g, '');
+}
+
+function jobCalendarEvents(j) {
+  const events = [];
+  const desc = [j.url, j.recruiterName ? `Recruiter: ${j.recruiterName}` : '', j.contactEmail || ''].filter(Boolean).join('\n');
+  if (j.interviewDate) events.push({ kind: 'interview', date: j.interviewDate, summary: `Interview: ${j.title} @ ${j.company}` });
+  if (j.deadline)      events.push({ kind: 'deadline',  date: j.deadline,      summary: `Apply by: ${j.title} @ ${j.company}` });
+  if (j.followupDate)  events.push({ kind: 'followup',  date: j.followupDate,  summary: `Follow up: ${j.title} @ ${j.company}` });
+  return events.map(e => ({ ...e, uid: `${j.id}-${e.kind}@jobtracker`, description: desc }));
+}
+
+function downloadIcs(events, filename) {
+  if (!events.length) { showToast('No dates to export.', 'error'); return; }
+  const stamp = new Date().toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+  const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//JobTracker//EN', 'CALSCALE:GREGORIAN'];
+  for (const e of events) {
+    const start = icsDate(e.date);
+    const end   = new Date(Date.UTC(+start.slice(0, 4), +start.slice(4, 6) - 1, +start.slice(6, 8) + 1)).toISOString().slice(0, 10).replace(/-/g, '');
+    lines.push(
+      'BEGIN:VEVENT',
+      `UID:${e.uid}`,
+      `DTSTAMP:${stamp}`,
+      `DTSTART;VALUE=DATE:${start}`,
+      `DTEND;VALUE=DATE:${end}`,
+      `SUMMARY:${icsEscape(e.summary)}`,
+      ...(e.description ? [`DESCRIPTION:${icsEscape(e.description)}`] : []),
+      'BEGIN:VALARM', 'TRIGGER:-PT12H', 'ACTION:DISPLAY', `DESCRIPTION:${icsEscape(e.summary)}`, 'END:VALARM',
+      'END:VEVENT'
+    );
+  }
+  lines.push('END:VCALENDAR');
+  const blob = new Blob([lines.join('\r\n')], { type: 'text/calendar' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast(`Exported ${events.length} event${events.length !== 1 ? 's' : ''} to calendar file`, 'success');
+}
+
+function exportAllCalendar() {
+  const today = new Date().toISOString().slice(0, 10);
+  const events = allJobs
+    .filter(j => !['archived', 'rejected'].includes(j.status))
+    .flatMap(jobCalendarEvents)
+    .filter(e => e.date.slice(0, 10) >= today);
+  downloadIcs(events, `job-dates-${today}.ics`);
+}
+
 function initials(company) {
   return (company || '?').split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase();
 }
@@ -727,6 +783,7 @@ function renderJobs() {
           <a class="card-btn" href="https://www.linkedin.com/search/results/companies/?keywords=${encodeURIComponent(j.company)}" target="_blank" title="LinkedIn company" style="text-decoration:none;display:flex;align-items:center;justify-content:center">🔗</a>
           <a class="card-btn" href="https://www.levels.fyi/companies/${encodeURIComponent(j.company.toLowerCase().replace(/\s+/g,'-'))}/salaries/" target="_blank" title="Levels.fyi salaries" style="text-decoration:none;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700">💲</a>
           <button class="card-btn" data-action="toggle-pin" data-job-id="${j.id}" title="${j.pinned ? 'Unpin' : 'Pin to top'}" style="${j.pinned ? 'color:#f59e0b' : ''}">${j.pinned ? '📌' : '📍'}</button>
+          ${j.interviewDate || j.deadline || j.followupDate ? `<button class="card-btn" data-action="calendar" data-job-id="${j.id}" title="Add interview / deadline / follow-up to calendar">🗓</button>` : ''}
           <button class="card-btn" data-action="copy" data-job-id="${j.id}" title="Copy job details">📋</button>
           <button class="card-btn" data-action="duplicate" data-job-id="${j.id}" title="Duplicate this application">⊕</button>
           <button class="card-btn danger" data-action="delete" data-job-id="${j.id}">🗑</button>
@@ -1268,6 +1325,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.addEventListener('click', e => {
     if (!pickerEl.contains(e.target) && e.target !== pickerBtn) pickerEl.classList.remove('open');
   });
+  document.getElementById('calendarExportBtn').addEventListener('click', exportAllCalendar);
   document.getElementById('backupJsonBtn').addEventListener('click', exportJson);
   document.getElementById('restoreJsonBtn').addEventListener('click', () => {
     document.getElementById('restoreJsonFile').value = '';
@@ -1594,6 +1652,10 @@ document.addEventListener('DOMContentLoaded', () => {
       if (job) send('UPDATE_JOB', { id: jobId, updates: { pinned: !job.pinned } }).then(reload);
     }
     if (action === 'archive-stale')  quickStatus(jobId, 'archived');
+    if (action === 'calendar') {
+      const job = allJobs.find(j => j.id === jobId);
+      if (job) downloadIcs(jobCalendarEvents(job), `${(job.company || 'job').toLowerCase().replace(/[^a-z0-9]+/g, '-')}.ics`);
+    }
     if (action === 'clear-followup') {
       send('UPDATE_JOB', { id: jobId, updates: { followupDate: null } }).then(reload);
     }
