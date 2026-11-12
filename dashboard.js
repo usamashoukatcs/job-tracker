@@ -317,6 +317,23 @@ function exportAllCalendar() {
   downloadIcs(events, `job-dates-${today}.ics`);
 }
 
+function companyKey(name) {
+  return (name || '').toLowerCase()
+    .replace(/\b(inc|llc|ltd|limited|gmbh|ag|bv|sa|srl|corp|corporation|co|plc)\b\.?/g, '')
+    .replace(/[^a-z0-9]+/g, '');
+}
+
+function groupByCompany(jobs) {
+  const map = new Map();
+  for (const j of jobs) {
+    const k = companyKey(j.company);
+    if (!k) continue;
+    if (!map.has(k)) map.set(k, []);
+    map.get(k).push(j);
+  }
+  return map;
+}
+
 function initials(company) {
   return (company || '?').split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase();
 }
@@ -657,8 +674,10 @@ function renderJobs() {
     return;
   }
 
+  const byCompany = groupByCompany(allJobs);
   grid.innerHTML = jobs.map(j => {
     const events   = (j.events || []).slice(-3).reverse();
+    const sameCompany = (byCompany.get(companyKey(j.company)) || []).filter(o => o.id !== j.id);
     const daysAgo  = daysSince(j.appliedDate);
     const followupDue = j.applicationMethod === 'email' && j.status === 'applied' &&
       !j.followUpSent && daysAgo >= (settings.followUpDays || 7);
@@ -690,7 +709,7 @@ function renderJobs() {
           <div class="card-avatar" style="${avatarStyle(j.company)}">${initials(j.company)}</div>
           <div class="card-main">
             <div class="card-title">${j.title}</div>
-            <div class="card-company">${j.company}</div>
+            <div class="card-company">${j.company}${sameCompany.length ? ` <span class="company-history" data-action="company-history" data-job-id="${j.id}" title="${sameCompany.map(o => `${o.title} — ${o.status} (${fmtDate(o.appliedDate)})`).join('&#10;').replace(/"/g, '&quot;')}">🏢 +${sameCompany.length} here</span>` : ''}</div>
             <div class="priority-stars" data-job-id="${j.id}">${[1,2,3].map(n => `<span class="pstar${(j.priority||0) >= n ? ' pstar-on' : ''}" data-star="${n}" title="${n === 1 ? 'Low' : n === 2 ? 'Medium' : 'High'} priority">★</span>`).join('')}</div>
             <div class="interest-hearts" data-job-id="${j.id}">${[1,2,3,4,5].map(n => `<span class="iheart${(j.interest||0) >= n ? ' iheart-on' : ''}" data-heart="${n}" title="${n === 1 ? 'Meh' : n === 2 ? 'OK' : n === 3 ? 'Like' : n === 4 ? 'Want' : 'Dream job'}">♥</span>`).join('')}</div>
             <div class="conf-emojis" data-job-id="${j.id}">${['😬','😐','🙂','😊','🚀'].map((em,i) => `<span class="cemoji${(j.confidence||0) >= i+1 ? ' cemoji-on' : ''}" data-conf="${i+1}" title="${['Low','Uncertain','Neutral','Hopeful','Very confident'][i]}">${em}</span>`).join('')}</div>
@@ -1227,6 +1246,12 @@ async function saveJob() {
     if (dupe) {
       const go = confirm(`You already have "${dupe.title} at ${dupe.company}" (${dupe.status}). Add anyway?`);
       if (!go) return;
+    } else {
+      const prior = allJobs.filter(j => companyKey(j.company) === companyKey(data.company));
+      if (prior.length) {
+        const rejected = prior.filter(j => j.status === 'rejected').length;
+        showToast(`Heads up: ${prior.length} earlier application${prior.length !== 1 ? 's' : ''} at ${data.company}${rejected ? ` (${rejected} rejected)` : ''}`, 'info');
+      }
     }
     data.statusUpdated = new Date().toISOString();
     await send('ADD_JOB', { job: data });
@@ -1650,6 +1675,14 @@ document.addEventListener('DOMContentLoaded', () => {
     if (action === 'toggle-pin') {
       const job = allJobs.find(j => j.id === jobId);
       if (job) send('UPDATE_JOB', { id: jobId, updates: { pinned: !job.pinned } }).then(reload);
+    }
+    if (action === 'company-history') {
+      const job = allJobs.find(j => j.id === jobId);
+      if (job) {
+        currentSearch = job.company;
+        document.getElementById('searchInput').value = job.company;
+        renderJobs();
+      }
     }
     if (action === 'archive-stale')  quickStatus(jobId, 'archived');
     if (action === 'calendar') {
