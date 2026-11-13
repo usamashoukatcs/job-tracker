@@ -382,7 +382,22 @@ function setFilter(f, clickedEl) {
   renderJobs();
 }
 
+function isSnoozed(j) {
+  return !!j.snoozedUntil && new Date(j.snoozedUntil).getTime() > Date.now();
+}
+
+async function snoozeJob(id, days) {
+  const until = new Date(Date.now() + days * 86400000).toISOString();
+  await send('UPDATE_JOB', { id, updates: { snoozedUntil: until } });
+  await reload();
+  showToast(`Snoozed for ${days} day${days !== 1 ? 's' : ''}`, 'success', {
+    label: 'Undo',
+    onClick: () => send('UPDATE_JOB', { id, updates: { snoozedUntil: null } }).then(reload)
+  });
+}
+
 function needsAttention(j) {
+  if (isSnoozed(j)) return false;
   const now = Date.now();
   // stale: applied/interview with no activity 14+ days
   const lastActivity = (() => {
@@ -686,7 +701,8 @@ function renderJobs() {
       if (j.events && j.events.length) return j.events[j.events.length - 1].date;
       return j.statusUpdated || j.appliedDate;
     })();
-    const stale = ['applied', 'interview'].includes(j.status) && daysSince(lastActivityDate) >= 14;
+    const snoozed = isSnoozed(j);
+    const stale = !snoozed && ['applied', 'interview'].includes(j.status) && daysSince(lastActivityDate) >= 14;
 
     const timeline = events.map(e => `
       <div class="timeline-item">
@@ -761,7 +777,8 @@ function renderJobs() {
             return `<div class="${cls}">⏰ Deadline in ${diff}d — ${label}</div>`;
           })()}
           ${stale ? `<div class="alert-strip alert-yellow" style="display:flex;align-items:center;justify-content:space-between">🕰 No activity for ${daysSince(lastActivityDate)} days<button class="card-btn" data-action="archive-stale" data-job-id="${j.id}" style="font-size:11px;padding:2px 8px;margin:0">Archive</button></div>` : ''}
-          ${followupDue ? `<div class="alert-strip alert-yellow">⏰ Follow-up overdue — ${daysAgo} days with no response</div>` : ''}
+          ${snoozed ? `<div class="alert-strip alert-blue" style="display:flex;align-items:center;justify-content:space-between">💤 Snoozed until ${new Date(j.snoozedUntil).toLocaleDateString('en-US',{month:'short',day:'numeric'})}<button class="card-btn" data-action="unsnooze" data-job-id="${j.id}" style="font-size:11px;padding:2px 8px;margin:0">Wake</button></div>` : ''}
+          ${followupDue && !snoozed ? `<div class="alert-strip alert-yellow">⏰ Follow-up overdue — ${daysAgo} days with no response</div>` : ''}
           ${j.statusReason ? `<div style="font-size:12px;color:#94a3b8;font-style:italic;padding:0 16px 6px">↳ ${j.statusReason}</div>` : ''}
           ${j.notes ? `<div class="card-notes">${j.notes}</div>` : ''}
           ${j.jobDescription ? `
@@ -803,6 +820,7 @@ function renderJobs() {
           <a class="card-btn" href="https://www.levels.fyi/companies/${encodeURIComponent(j.company.toLowerCase().replace(/\s+/g,'-'))}/salaries/" target="_blank" title="Levels.fyi salaries" style="text-decoration:none;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700">💲</a>
           <button class="card-btn" data-action="toggle-pin" data-job-id="${j.id}" title="${j.pinned ? 'Unpin' : 'Pin to top'}" style="${j.pinned ? 'color:#f59e0b' : ''}">${j.pinned ? '📌' : '📍'}</button>
           ${j.interviewDate || j.deadline || j.followupDate ? `<button class="card-btn" data-action="calendar" data-job-id="${j.id}" title="Add interview / deadline / follow-up to calendar">🗓</button>` : ''}
+          ${!snoozed && needsAttention(j) ? `<select class="card-btn" data-action="snooze" data-job-id="${j.id}" title="Hide from Needs Attention for a while" style="cursor:pointer"><option value="">💤</option><option value="3">3 days</option><option value="7">1 week</option><option value="14">2 weeks</option></select>` : ''}
           <button class="card-btn" data-action="copy" data-job-id="${j.id}" title="Copy job details">📋</button>
           <button class="card-btn" data-action="duplicate" data-job-id="${j.id}" title="Duplicate this application">⊕</button>
           <button class="card-btn danger" data-action="delete" data-job-id="${j.id}">🗑</button>
@@ -1684,6 +1702,9 @@ document.addEventListener('DOMContentLoaded', () => {
         renderJobs();
       }
     }
+    if (action === 'unsnooze') {
+      send('UPDATE_JOB', { id: jobId, updates: { snoozedUntil: null } }).then(reload);
+    }
     if (action === 'archive-stale')  quickStatus(jobId, 'archived');
     if (action === 'calendar') {
       const job = allJobs.find(j => j.id === jobId);
@@ -1717,6 +1738,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Job grid: status select delegation
   document.getElementById('jobsGrid').addEventListener('change', e => {
+    const snoozeSel = e.target.closest('[data-action="snooze"]');
+    if (snoozeSel) {
+      if (snoozeSel.value) snoozeJob(snoozeSel.dataset.jobId, Number(snoozeSel.value));
+      return;
+    }
     const sel = e.target.closest('[data-action="status"]');
     if (!sel || !sel.value) return;
     const jobId = sel.dataset.jobId || sel.closest('[data-job-id]')?.dataset.jobId;
