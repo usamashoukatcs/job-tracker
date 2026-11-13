@@ -310,6 +310,17 @@ body {
         </select>
         <div class="hint">For email applications only. You'll get a browser notification when the time is up.</div>
       </div>
+      <div class="form-group">
+        <label>Suggest marking as ghosted after (days of silence)</label>
+        <select id="ghostAfterDays">
+          <option value="21">3 weeks</option>
+          <option value="30" selected>30 days</option>
+          <option value="45">45 days</option>
+          <option value="60">60 days</option>
+          <option value="0">Never</option>
+        </select>
+        <div class="hint">Applied jobs with no activity for this long can be marked ghosted in one click from the dashboard.</div>
+      </div>
     </div>
   </div>
 

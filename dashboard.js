@@ -382,6 +382,43 @@ function setFilter(f, clickedEl) {
   renderJobs();
 }
 
+function lastActivityOf(j) {
+  if (j.events && j.events.length) return j.events[j.events.length - 1].date;
+  return j.statusUpdated || j.appliedDate;
+}
+
+function silentJobs() {
+  const days = settings.ghostAfterDays ?? 30;
+  if (!days) return [];
+  return allJobs.filter(j => j.status === 'applied' && !isSnoozed(j) && daysSince(lastActivityOf(j)) >= days);
+}
+
+async function ghostSilentJobs() {
+  const jobs = silentJobs();
+  if (!jobs.length) return;
+  const days = settings.ghostAfterDays ?? 30;
+  const list = jobs.slice(0, 10).map(j => `• ${j.title} — ${j.company} (${daysSince(lastActivityOf(j))}d)`).join('\n');
+  const more = jobs.length > 10 ? `\n…and ${jobs.length - 10} more` : '';
+  if (!confirm(`Mark ${jobs.length} application${jobs.length !== 1 ? 's' : ''} with no activity for ${days}+ days as ghosted?\n\n${list}${more}`)) return;
+  const now = new Date().toISOString();
+  for (const j of jobs) {
+    await send('UPDATE_JOB', { id: j.id, updates: {
+      status: 'ghosted', statusUpdated: now, statusReason: j.statusReason || 'No response after apply',
+      _note: `Marked ghosted after ${daysSince(lastActivityOf(j))} days of silence`
+    } });
+  }
+  await reload();
+  showToast(`👻 ${jobs.length} application${jobs.length !== 1 ? 's' : ''} marked ghosted`, 'success', {
+    label: 'Undo',
+    onClick: async () => {
+      for (const j of jobs) {
+        await send('UPDATE_JOB', { id: j.id, updates: { status: 'applied', statusUpdated: j.statusUpdated || null, statusReason: j.statusReason || '', _note: 'Ghosting undone' } });
+      }
+      await reload();
+    }
+  });
+}
+
 function isSnoozed(j) {
   return !!j.snoozedUntil && new Date(j.snoozedUntil).getTime() > Date.now();
 }
@@ -655,6 +692,12 @@ function renderJobs() {
     tabEl.style.borderColor = attentionN > 0 ? '#fcd34d' : '';
     tabEl.style.color = currentFilter === 'attention' ? '#fff' : attentionN > 0 ? '#92400e' : '';
     tabEl.style.display = attentionN > 0 || currentFilter === 'attention' ? '' : 'none';
+  }
+  const ghostBtn = document.getElementById('ghostSilentBtn');
+  if (ghostBtn) {
+    const silentN = silentJobs().length;
+    ghostBtn.style.display = silentN > 0 ? '' : 'none';
+    document.getElementById('ghostSilentCount').textContent = silentN > 0 ? `(${silentN})` : '';
   }
   // Active tag filter chips
   const tagChipsEl = document.getElementById('activeTagFilters');
@@ -1369,6 +1412,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!pickerEl.contains(e.target) && e.target !== pickerBtn) pickerEl.classList.remove('open');
   });
   document.getElementById('calendarExportBtn').addEventListener('click', exportAllCalendar);
+  document.getElementById('ghostSilentBtn').addEventListener('click', ghostSilentJobs);
   document.getElementById('backupJsonBtn').addEventListener('click', exportJson);
   document.getElementById('restoreJsonBtn').addEventListener('click', () => {
     document.getElementById('restoreJsonFile').value = '';

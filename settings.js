@@ -11,6 +11,7 @@ async function load() {
   document.getElementById('claudeKey').value     = settings.claudeApiKey || '';
   document.getElementById('googleClientId').value = settings.googleClientId || '';
   document.getElementById('followUpDays').value   = String(settings.followUpDays ?? 7);
+  document.getElementById('ghostAfterDays').value = String(settings.ghostAfterDays ?? 30);
   updateGmailToggle(settings.gmailEnabled);
   updateClaudeStatus(!!settings.claudeApiKey);
   updateGmailStatus(settings.gmailEnabled);
@@ -126,6 +127,7 @@ function collectSettings() {
     claudeApiKey:     document.getElementById('claudeKey').value.trim(),
     googleClientId:   document.getElementById('googleClientId').value.trim(),
     followUpDays:     parseInt(document.getElementById('followUpDays').value),
+    ghostAfterDays:   parseInt(document.getElementById('ghostAfterDays').value),
     gmailEnabled:     settings.gmailEnabled || false,
     aiWritingEnabled: settings.aiWritingEnabled !== false
   };
