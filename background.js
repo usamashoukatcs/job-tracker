@@ -339,6 +339,31 @@ async function getAIAnswer(question, context, description) {
   }
 }
 
+async function checkDeadlines() {
+  const jobs = await getJobs();
+  const now = new Date();
+  const todayStr = now.toISOString().slice(0, 10);
+  const tomorrowStr = new Date(now.getTime() + 86400000).toISOString().slice(0, 10);
+
+  for (const job of jobs) {
+    if (!job.deadline || ['archived', 'rejected', 'ghosted'].includes(job.status)) continue;
+    const dateStr = job.deadline.slice(0, 10);
+    if (dateStr !== todayStr && dateStr !== tomorrowStr) continue;
+    const notifKey = `deadline-notif-${job.id}-${dateStr}`;
+    const r = await chrome.storage.local.get(notifKey);
+    if (r[notifKey]) continue;
+    await chrome.storage.local.set({ [notifKey]: true });
+    const when = dateStr === todayStr ? 'today' : 'tomorrow';
+    chrome.notifications.create(`deadline-${job.id}`, {
+      type: 'basic',
+      iconUrl: 'icons/icon48.png',
+      title: `⏰ Deadline ${when}`,
+      message: `${job.title} at ${job.company} — application closes ${when}.`,
+      buttons: [{ title: 'Open Dashboard' }]
+    });
+  }
+}
+
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function notify(title, message) {
@@ -365,11 +390,11 @@ chrome.runtime.onStartup.addListener(async () => {
 chrome.alarms.onAlarm.addListener(async (alarm) => {
   if (alarm.name === 'gmail-sync')       await syncGmail();
   if (alarm.name === 'followup-check')   { await checkFollowUps(); await checkCustomFollowups(); }
-  if (alarm.name === 'interview-check')  await checkInterviews();
+  if (alarm.name === 'interview-check')  { await checkInterviews(); await checkDeadlines(); }
 });
 
 chrome.notifications.onButtonClicked.addListener((notifId, btnIdx) => {
-  if ((notifId.startsWith('followup-') || notifId.startsWith('custom-followup-') || notifId.startsWith('interview-')) && btnIdx === 0) {
+  if ((notifId.startsWith('followup-') || notifId.startsWith('custom-followup-') || notifId.startsWith('interview-') || notifId.startsWith('deadline-')) && btnIdx === 0) {
     chrome.tabs.create({ url: chrome.runtime.getURL('dashboard.html') });
   }
 });
