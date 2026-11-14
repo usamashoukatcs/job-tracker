@@ -382,6 +382,17 @@ function setFilter(f, clickedEl) {
   renderJobs();
 }
 
+function skillMatch(jobDescription, skills) {
+  if (!jobDescription || !skills || !skills.length) return null;
+  const matched = [], missing = [];
+  for (const skill of skills) {
+    const esc = skill.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const re  = new RegExp(`(^|[^A-Za-z0-9+#])${esc}(?![A-Za-z0-9+#])`, skill.length <= 3 ? '' : 'i');
+    (re.test(jobDescription) ? matched : missing).push(skill);
+  }
+  return { matched, missing, pct: Math.round(matched.length / skills.length * 100) };
+}
+
 function lastActivityOf(j) {
   if (j.events && j.events.length) return j.events[j.events.length - 1].date;
   return j.statusUpdated || j.appliedDate;
@@ -788,6 +799,13 @@ function renderJobs() {
             ${j.workType ? `<div class="meta-item">${j.workType === 'Remote' ? '🏠' : j.workType === 'Hybrid' ? '🔀' : '🏢'} ${j.workType}</div>` : ''}
             ${j.location ? `<div class="meta-item">📍 ${j.location}</div>` : ''}
             ${j.resumeVersion ? `<div class="meta-item" title="Resume version">📄 ${j.resumeVersion}</div>` : ''}
+            ${(() => {
+              const m = skillMatch(j.jobDescription, settings.mySkills);
+              if (!m) return '';
+              const color = m.pct >= 70 ? '#16a34a' : m.pct >= 40 ? '#d97706' : '#dc2626';
+              const tip = `Matched: ${m.matched.join(', ') || '—'}&#10;Missing: ${m.missing.join(', ') || '—'}`.replace(/"/g, '&quot;');
+              return `<div class="meta-item" title="${tip}" style="color:${color};font-weight:600;cursor:help">🎯 ${m.matched.length}/${m.matched.length + m.missing.length} skills</div>`;
+            })()}
             ${j.recruiterName ? `<div class="meta-item">👤 ${j.recruiterLinkedin ? `<a href="${j.recruiterLinkedin}" target="_blank" style="color:#2563eb;text-decoration:none">${j.recruiterName}</a>` : j.recruiterName}</div>` : ''}
             ${j.url ? `<div class="meta-item"><a href="${j.url}" target="_blank" style="color:#2563eb;text-decoration:none">🔗 View Job</a></div>` : ''}
           </div>
