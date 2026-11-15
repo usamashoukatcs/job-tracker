@@ -393,6 +393,58 @@ function skillMatch(jobDescription, skills) {
   return { matched, missing, pct: Math.round(matched.length / skills.length * 100) };
 }
 
+function buildWeeklyRecap(jobs, now = Date.now()) {
+  const weekAgo = now - 7 * 86400000;
+  const weekAhead = now + 7 * 86400000;
+  const inPast = d => d && new Date(d).getTime() >= weekAgo && new Date(d).getTime() <= now;
+  const inNext = d => d && new Date(d).getTime() >= now - 86400000 && new Date(d).getTime() <= weekAhead;
+  const label  = j => `${j.title} — ${j.company}`;
+  const day    = d => new Date(d).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+
+  const applied = jobs.filter(j => inPast(j.appliedDate));
+  const moves = { interview: [], offer: [], rejected: [], ghosted: [] };
+  for (const j of jobs) {
+    for (const e of j.events || []) {
+      if (moves[e.type] && inPast(e.date) && !moves[e.type].includes(j)) moves[e.type].push(j);
+    }
+  }
+  const upcoming = [];
+  for (const j of jobs) {
+    if (['archived', 'rejected', 'ghosted'].includes(j.status)) continue;
+    if (inNext(j.interviewDate)) upcoming.push([j.interviewDate, `🎙 Interview: ${label(j)}`]);
+    if (inNext(j.deadline))      upcoming.push([j.deadline, `⏰ Deadline: ${label(j)}`]);
+    if (inNext(j.followupDate))  upcoming.push([j.followupDate, `📌 Follow up: ${label(j)}`]);
+  }
+  upcoming.sort((a, b) => new Date(a[0]) - new Date(b[0]));
+
+  const section = (title, list) => list.length ? [`${title} (${list.length})`, ...list.map(j => `  • ${label(j)}`)] : [];
+  const active  = jobs.filter(j => ['applied', 'interview', 'offer'].includes(j.status)).length;
+  const lines = [
+    `Job search recap — ${day(weekAgo)} to ${day(now)}`,
+    '',
+    ...section('📨 Applied', applied),
+    ...section('🗣 Moved to interview', moves.interview),
+    ...section('🎉 Offers', moves.offer),
+    ...section('❌ Rejected', moves.rejected),
+    ...section('👻 Ghosted', moves.ghosted),
+  ];
+  if (lines.length === 2) lines.push('No activity this week.');
+  lines.push('', upcoming.length ? `📅 Next 7 days` : '📅 Nothing scheduled for the next 7 days');
+  for (const [d, text] of upcoming) lines.push(`  • ${day(d)} — ${text}`);
+  lines.push('', `Active pipeline: ${active} job${active !== 1 ? 's' : ''}`);
+  return lines.join('\n');
+}
+
+async function copyWeeklyRecap() {
+  const text = buildWeeklyRecap(allJobs);
+  try {
+    await navigator.clipboard.writeText(text);
+    showToast('Weekly recap copied to clipboard', 'success');
+  } catch {
+    showToast('Could not access the clipboard.', 'error');
+  }
+}
+
 async function checkJobPosting(id) {
   const job = allJobs.find(j => j.id === id);
   if (!job?.url) return null;
@@ -1459,6 +1511,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('calendarExportBtn').addEventListener('click', exportAllCalendar);
   document.getElementById('ghostSilentBtn').addEventListener('click', ghostSilentJobs);
   document.getElementById('checkPostingsBtn').addEventListener('click', checkAllPostings);
+  document.getElementById('weeklyRecapBtn').addEventListener('click', copyWeeklyRecap);
   document.getElementById('backupJsonBtn').addEventListener('click', exportJson);
   document.getElementById('restoreJsonBtn').addEventListener('click', () => {
     document.getElementById('restoreJsonFile').value = '';
