@@ -364,6 +364,34 @@ async function checkDeadlines() {
   }
 }
 
+const CLOSED_POSTING_PATTERNS = [
+  /no longer accepting applications/i,
+  /no longer (available|open|active)/i,
+  /(job|position|posting|vacancy|role) (has )?(been )?(filled|closed|expired|removed)/i,
+  /(this|the) job (posting )?(has )?expired/i,
+  /applications? (are |is )?(now )?closed/i,
+  /job not found/i,
+  /page (you('| a)re looking for )?(could not be|can'?t be|was not) found/i
+];
+
+async function checkPosting(url) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 15000);
+  try {
+    const res = await fetch(url, { redirect: 'follow', signal: controller.signal, credentials: 'omit' });
+    if ([404, 410].includes(res.status)) return { state: 'closed', reason: `HTTP ${res.status}` };
+    if (!res.ok) return { state: 'unknown', reason: `HTTP ${res.status}` };
+    const text = (await res.text()).slice(0, 500000);
+    const hit = CLOSED_POSTING_PATTERNS.find(re => re.test(text));
+    if (hit) return { state: 'closed', reason: text.match(hit)[0] };
+    return { state: 'open', reason: '' };
+  } catch (e) {
+    return { state: 'unknown', reason: e.name === 'AbortError' ? 'timed out' : 'unreachable' };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function notify(title, message) {
@@ -440,6 +468,12 @@ chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
         const jobs = await getJobs();
         await saveJobs(jobs.filter(j => j.id !== msg.id));
         reply({ ok: true });
+        break;
+      }
+      case 'CHECK_POSTING': {
+        const result = await checkPosting(msg.url);
+        const job = await updateJob(msg.id, { postingState: result.state, postingReason: result.reason, postingCheckedAt: new Date().toISOString() });
+        reply({ result, job });
         break;
       }
       case 'REPLACE_ALL_JOBS': {

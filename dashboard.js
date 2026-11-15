@@ -393,6 +393,31 @@ function skillMatch(jobDescription, skills) {
   return { matched, missing, pct: Math.round(matched.length / skills.length * 100) };
 }
 
+async function checkJobPosting(id) {
+  const job = allJobs.find(j => j.id === id);
+  if (!job?.url) return null;
+  const res = await send('CHECK_POSTING', { id, url: job.url });
+  return res?.result || null;
+}
+
+async function checkAllPostings() {
+  const btn  = document.getElementById('checkPostingsBtn');
+  const jobs = allJobs.filter(j => j.url && ['applied', 'interview'].includes(j.status));
+  if (!jobs.length) { showToast('No active applications with a posting link.', 'error'); return; }
+  btn.disabled = true;
+  let closed = 0, unknown = 0;
+  for (let i = 0; i < jobs.length; i++) {
+    btn.textContent = `🔍 ${i + 1}/${jobs.length}`;
+    const r = await checkJobPosting(jobs[i].id);
+    if (r?.state === 'closed') closed++;
+    if (!r || r.state === 'unknown') unknown++;
+  }
+  btn.disabled = false;
+  btn.textContent = '🔍 Postings';
+  await reload();
+  showToast(`Checked ${jobs.length} posting${jobs.length !== 1 ? 's' : ''} — ${closed} closed${unknown ? `, ${unknown} couldn't be checked` : ''}`, closed ? 'info' : 'success');
+}
+
 function lastActivityOf(j) {
   if (j.events && j.events.length) return j.events[j.events.length - 1].date;
   return j.statusUpdated || j.appliedDate;
@@ -838,6 +863,7 @@ function renderJobs() {
             return `<div class="${cls}">⏰ Deadline in ${diff}d — ${label}</div>`;
           })()}
           ${stale ? `<div class="alert-strip alert-yellow" style="display:flex;align-items:center;justify-content:space-between">🕰 No activity for ${daysSince(lastActivityDate)} days<button class="card-btn" data-action="archive-stale" data-job-id="${j.id}" style="font-size:11px;padding:2px 8px;margin:0">Archive</button></div>` : ''}
+          ${j.postingState === 'closed' && ['applied', 'interview'].includes(j.status) ? `<div class="alert-strip alert-red" title="Checked ${fmtDate(j.postingCheckedAt)}${j.postingReason ? ' — ' + j.postingReason.replace(/"/g, '&quot;') : ''}">🚫 Posting looks closed</div>` : ''}
           ${snoozed ? `<div class="alert-strip alert-blue" style="display:flex;align-items:center;justify-content:space-between">💤 Snoozed until ${new Date(j.snoozedUntil).toLocaleDateString('en-US',{month:'short',day:'numeric'})}<button class="card-btn" data-action="unsnooze" data-job-id="${j.id}" style="font-size:11px;padding:2px 8px;margin:0">Wake</button></div>` : ''}
           ${followupDue && !snoozed ? `<div class="alert-strip alert-yellow">⏰ Follow-up overdue — ${daysAgo} days with no response</div>` : ''}
           ${j.statusReason ? `<div style="font-size:12px;color:#94a3b8;font-style:italic;padding:0 16px 6px">↳ ${j.statusReason}</div>` : ''}
@@ -882,6 +908,7 @@ function renderJobs() {
           <button class="card-btn" data-action="toggle-pin" data-job-id="${j.id}" title="${j.pinned ? 'Unpin' : 'Pin to top'}" style="${j.pinned ? 'color:#f59e0b' : ''}">${j.pinned ? '📌' : '📍'}</button>
           ${j.interviewDate || j.deadline || j.followupDate ? `<button class="card-btn" data-action="calendar" data-job-id="${j.id}" title="Add interview / deadline / follow-up to calendar">🗓</button>` : ''}
           ${!snoozed && needsAttention(j) ? `<select class="card-btn" data-action="snooze" data-job-id="${j.id}" title="Hide from Needs Attention for a while" style="cursor:pointer"><option value="">💤</option><option value="3">3 days</option><option value="7">1 week</option><option value="14">2 weeks</option></select>` : ''}
+          ${j.url ? `<button class="card-btn" data-action="check-posting" data-job-id="${j.id}" title="${j.postingCheckedAt ? `Posting ${j.postingState} — checked ${fmtDate(j.postingCheckedAt)}` : 'Check if the posting is still open'}">🔍</button>` : ''}
           <button class="card-btn" data-action="copy" data-job-id="${j.id}" title="Copy job details">📋</button>
           <button class="card-btn" data-action="duplicate" data-job-id="${j.id}" title="Duplicate this application">⊕</button>
           <button class="card-btn danger" data-action="delete" data-job-id="${j.id}">🗑</button>
@@ -1431,6 +1458,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   document.getElementById('calendarExportBtn').addEventListener('click', exportAllCalendar);
   document.getElementById('ghostSilentBtn').addEventListener('click', ghostSilentJobs);
+  document.getElementById('checkPostingsBtn').addEventListener('click', checkAllPostings);
   document.getElementById('backupJsonBtn').addEventListener('click', exportJson);
   document.getElementById('restoreJsonBtn').addEventListener('click', () => {
     document.getElementById('restoreJsonFile').value = '';
@@ -1763,6 +1791,17 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('searchInput').value = job.company;
         renderJobs();
       }
+    }
+    if (action === 'check-posting') {
+      btn.disabled = true;
+      checkJobPosting(jobId).then(async r => {
+        await reload();
+        const msg = !r ? 'Could not check posting.'
+          : r.state === 'closed'  ? `Posting looks closed (${r.reason})`
+          : r.state === 'open'    ? 'Posting still looks open'
+          : `Couldn't tell — ${r.reason}`;
+        showToast(msg, r?.state === 'open' ? 'success' : r?.state === 'closed' ? 'error' : 'info');
+      });
     }
     if (action === 'unsnooze') {
       send('UPDATE_JOB', { id: jobId, updates: { snoozedUntil: null } }).then(reload);
