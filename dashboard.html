@@ -886,12 +886,24 @@ body[data-theme="dark"] .main-tab:hover { color: #60a5fa; }
 body[data-theme="dark"] .main-tab.active { color: #60a5fa; border-bottom-color: #3b82f6; }
 body[data-theme="dark"] #wishlistHeading { color: #f1f5f9; }
 body[data-theme="dark"] #notesHeading { color: #f1f5f9; }
+body[data-theme="dark"] #contactsHeading { color: #f1f5f9; }
 body[data-theme="dark"] #notesArea { background:#1e293b;border-color:#334155;color:#e2e8f0; }
 body[data-theme="dark"] .alert-strip.alert-yellow { background:#422006;border-color:#92400e;color:#fcd34d; }
 body[data-theme="dark"] .alert-strip.alert-red    { background:#450a0a;border-color:#b91c1c;color:#fca5a5; }
 body[data-theme="dark"] .alert-strip.alert-green  { background:#052e16;border-color:#15803d;color:#86efac; }
 body[data-theme="dark"] .alert-strip.alert-blue   { background:#172554;border-color:#1d4ed8;color:#93c5fd; }
 
+.contact-row { display:flex; align-items:center; gap:14px; padding:12px 14px; background:#fff; border:1px solid #e2e8f0; border-radius:10px; margin-bottom:8px; }
+.contact-main { flex:1; min-width:0; }
+.contact-name { font-size:14px; font-weight:600; color:#1e293b; }
+.contact-sub { font-size:12px; color:#64748b; margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.contact-jobs { display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
+.contact-job { font-size:11px; padding:2px 8px; border-radius:999px; background:#f1f5f9; color:#475569; cursor:pointer; }
+.contact-job:hover { background:#e2e8f0; }
+.contact-actions { display:flex; gap:6px; flex-shrink:0; }
+body[data-theme="dark"] .contact-row { background:#1e293b; border-color:#334155; }
+body[data-theme="dark"] .contact-name { color:#f1f5f9; }
+body[data-theme="dark"] .contact-job { background:#334155; color:#cbd5e1; }
 body[data-theme="dark"] .stat-card {
   background: #1e293b;
   border-color: #334155;
@@ -1165,6 +1177,7 @@ body[data-theme="dark"] #themePickerLabel { color:#64748b; }
     <button class="main-tab" id="tabStats">📊 Stats</button>
     <button class="main-tab" id="tabWishlist">⭐ Wishlist</button>
     <button class="main-tab" id="tabNotes">📝 Notes</button>
+    <button class="main-tab" id="tabContacts">👥 Contacts</button>
   </div>
 
   <!-- ── Tracker panel ────────────────────────────────────────────── -->
@@ -1464,6 +1477,21 @@ body[data-theme="dark"] #themePickerLabel { color:#64748b; }
       <span id="notesSavedLabel" style="font-size:11px;color:#94a3b8"></span>
     </div>
     <textarea id="notesArea" placeholder="Write anything here — interview lessons, companies to research, goals for the week, what's working and what isn't…" style="width:100%;min-height:320px;padding:14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:13px;line-height:1.7;resize:vertical;font-family:inherit;box-sizing:border-box"></textarea>
+  </div>
+
+  <!-- ── Contacts panel ───────────────────────────────────────────── -->
+  <div id="contactsPanel" style="display:none;padding:20px">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px;flex-wrap:wrap">
+      <div>
+        <div style="font-size:16px;font-weight:700;color:#1e293b" id="contactsHeading">👥 Contacts</div>
+        <div style="font-size:12px;color:#94a3b8;margin-top:2px">Recruiters and hiring contacts collected from your applications</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input type="text" id="contactsSearch" placeholder="Search name, email, company…" style="padding:7px 10px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:13px;min-width:220px">
+        <button class="tb-btn" id="contactsCopyEmailsBtn" title="Copy all listed email addresses">📋 Copy emails</button>
+      </div>
+    </div>
+    <div id="contactsList"></div>
   </div>
 
   <!-- ── Wishlist panel ───────────────────────────────────────────── -->

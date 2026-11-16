@@ -382,6 +382,64 @@ function setFilter(f, clickedEl) {
   renderJobs();
 }
 
+function escHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function collectContacts(jobs) {
+  const byKey = new Map();
+  for (const j of jobs) {
+    const name  = (j.recruiterName || '').trim();
+    const email = (j.contactEmail || '').trim().toLowerCase();
+    const li    = (j.recruiterLinkedin || '').trim();
+    if (!name && !email && !li) continue;
+    const key = email || li.toLowerCase().replace(/\/+$/, '') || `${name.toLowerCase()}|${companyKey(j.company)}`;
+    if (!byKey.has(key)) byKey.set(key, { name: '', email: '', linkedin: '', jobs: [], lastActivity: null });
+    const c = byKey.get(key);
+    c.name     = c.name || name;
+    c.email    = c.email || email;
+    c.linkedin = c.linkedin || li;
+    c.jobs.push(j);
+    const last = lastActivityOf(j);
+    if (!c.lastActivity || new Date(last) > new Date(c.lastActivity)) c.lastActivity = last;
+  }
+  return [...byKey.values()].sort((a, b) => new Date(b.lastActivity) - new Date(a.lastActivity));
+}
+
+function filteredContacts() {
+  const q = (document.getElementById('contactsSearch')?.value || '').trim().toLowerCase();
+  const all = collectContacts(allJobs);
+  if (!q) return all;
+  return all.filter(c => [c.name, c.email, c.linkedin, ...c.jobs.map(j => `${j.company} ${j.title}`)].join(' ').toLowerCase().includes(q));
+}
+
+function renderContacts() {
+  const list = document.getElementById('contactsList');
+  const contacts = filteredContacts();
+  if (!contacts.length) {
+    list.innerHTML = `<div class="empty-state"><div class="es-icon">👥</div><div class="es-text">No contacts yet</div><div class="es-sub">Add a recruiter name, LinkedIn or contact email to a job and it shows up here</div></div>`;
+    return;
+  }
+  list.innerHTML = contacts.map(c => {
+    const companies = [...new Set(c.jobs.map(j => j.company))];
+    const title = c.name || c.email || 'LinkedIn contact';
+    return `
+      <div class="contact-row">
+        <div class="card-avatar" style="${avatarStyle(title)}">${escHtml(initials(title))}</div>
+        <div class="contact-main">
+          <div class="contact-name">${escHtml(title)}</div>
+          <div class="contact-sub">${escHtml(companies.join(' · '))} — last activity ${daysSince(c.lastActivity)}d ago</div>
+          <div class="contact-jobs">${c.jobs.map(j => `<span class="contact-job" data-contact-company="${escHtml(j.company)}" title="Show in tracker">${escHtml(j.title)} · ${escHtml(j.status)}</span>`).join('')}</div>
+        </div>
+        <div class="contact-actions">
+          ${c.email ? `<a class="card-btn" href="mailto:${escHtml(c.email)}" title="${escHtml(c.email)}" style="text-decoration:none">✉</a>` : ''}
+          ${c.email ? `<button class="card-btn" data-copy-email="${escHtml(c.email)}" title="Copy email">📋</button>` : ''}
+          ${/^https?:\/\//i.test(c.linkedin) ? `<a class="card-btn" href="${escHtml(c.linkedin)}" target="_blank" title="LinkedIn profile" style="text-decoration:none">🔗</a>` : ''}
+        </div>
+      </div>`;
+  }).join('');
+}
+
 function skillMatch(jobDescription, skills) {
   if (!jobDescription || !skills || !skills.length) return null;
   const matched = [], missing = [];
@@ -1962,6 +2020,28 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('tabFinder').addEventListener('click',   () => switchTab('finder'));
   document.getElementById('tabWishlist').addEventListener('click', () => switchTab('wishlist'));
   document.getElementById('tabNotes').addEventListener('click',    () => switchTab('notes'));
+  document.getElementById('tabContacts').addEventListener('click', () => switchTab('contacts'));
+  document.getElementById('contactsSearch').addEventListener('input', renderContacts);
+  document.getElementById('contactsCopyEmailsBtn').addEventListener('click', () => {
+    const emails = [...new Set(filteredContacts().map(c => c.email).filter(Boolean))];
+    if (!emails.length) { showToast('No email addresses to copy.', 'error'); return; }
+    navigator.clipboard.writeText(emails.join(', ')).then(() => showToast(`Copied ${emails.length} email${emails.length !== 1 ? 's' : ''}`, 'success'));
+  });
+  document.getElementById('contactsList').addEventListener('click', e => {
+    const copy = e.target.closest('[data-copy-email]');
+    if (copy) {
+      navigator.clipboard.writeText(copy.dataset.copyEmail).then(() => showToast('Email copied', 'success'));
+      return;
+    }
+    const job = e.target.closest('[data-contact-company]');
+    if (job) {
+      switchTab('tracker');
+      setFilter('all', document.querySelector('.filter-tab[data-filter="all"]'));
+      currentSearch = job.dataset.contactCompany;
+      document.getElementById('searchInput').value = currentSearch;
+      if (viewMode === 'kanban') renderKanban(); else renderJobs();
+    }
+  });
   document.getElementById('notesArea').addEventListener('input', scheduleNotesSave);
 
   // Wishlist modal
@@ -2323,17 +2403,20 @@ function switchTab(tab) {
   document.getElementById('tabStats').classList.toggle('active',    tab === 'stats');
   document.getElementById('tabWishlist').classList.toggle('active', tab === 'wishlist');
   document.getElementById('tabNotes').classList.toggle('active',    tab === 'notes');
+  document.getElementById('tabContacts').classList.toggle('active', tab === 'contacts');
   document.getElementById('trackerPanel').style.display   = tab === 'tracker'  ? '' : 'none';
   document.getElementById('trackerSearch').style.display  = tab === 'tracker'  ? '' : 'none';
   document.getElementById('finderPanel').style.display    = tab === 'finder'   ? '' : 'none';
   document.getElementById('statsPanel').style.display     = tab === 'stats'    ? '' : 'none';
   document.getElementById('wishlistPanel').style.display  = tab === 'wishlist' ? '' : 'none';
   document.getElementById('notesPanel').style.display     = tab === 'notes'    ? '' : 'none';
+  document.getElementById('contactsPanel').style.display  = tab === 'contacts' ? '' : 'none';
   if (tab !== 'tracker') clearSelection();
   if (tab === 'finder')   loadFinderJobs();
   if (tab === 'stats')    renderAnalytics();
   if (tab === 'wishlist') renderWishlist();
   if (tab === 'notes')    loadNotes();
+  if (tab === 'contacts') renderContacts();
 }
 
 async function loadNotes() {
