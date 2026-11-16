@@ -528,6 +528,17 @@ async function checkAllPostings() {
   showToast(`Checked ${jobs.length} posting${jobs.length !== 1 ? 's' : ''} — ${closed} closed${unknown ? `, ${unknown} couldn't be checked` : ''}`, closed ? 'info' : 'success');
 }
 
+function stageSince(j) {
+  const entered = (j.events || []).filter(e => e.type === j.status).pop();
+  return j.statusUpdated || entered?.date || j.appliedDate;
+}
+
+function stageAgeClass(status, days) {
+  if (!['applied', 'interview', 'offer'].includes(status)) return '';
+  const [warn, late] = status === 'offer' ? [5, 10] : status === 'interview' ? [10, 21] : [14, 30];
+  return days >= late ? 'stage-age-late' : days >= warn ? 'stage-age-warn' : '';
+}
+
 function lastActivityOf(j) {
   if (j.events && j.events.length) return j.events[j.events.length - 1].date;
   return j.statusUpdated || j.appliedDate;
@@ -733,6 +744,7 @@ function renderKanban() {
       : jobs.map(j => {
           const days = daysSince(j.appliedDate);
           const daysLabel = days === 0 ? 'today' : days === 1 ? '1 day ago' : `${days}d ago`;
+          const inStage = daysSince(stageSince(j));
           return `
             <div class="kanban-card" draggable="true" data-job-id="${j.id}">
               <div class="kanban-card-top">
@@ -741,6 +753,7 @@ function renderKanban() {
               <div class="kanban-card-company">${j.company}</div>
               <div class="kanban-card-footer">
                 <span class="kanban-card-days">📅 ${daysLabel}</span>
+                <span class="stage-age ${stageAgeClass(j.status, inStage)}" title="Time in ${j.status}">⏳ ${inStage}d</span>
                 <select data-action="status" data-job-id="${j.id}">
                   <option value="">Move →</option>
                   <option value="applied">Applied</option>
@@ -761,7 +774,7 @@ function renderKanban() {
             <span style="width:9px;height:9px;border-radius:50%;background:${col.dot};display:inline-block"></span>
             ${col.label}
           </span>
-          <span class="kanban-count">${jobs.length}</span>
+          <span class="kanban-count" title="${jobs.length ? `Average ${Math.round(jobs.reduce((n, j) => n + daysSince(stageSince(j)), 0) / jobs.length)}d in ${col.label.toLowerCase()}` : ''}">${jobs.length}</span>
         </div>
         <div class="kanban-cards" data-drop-status="${col.status}">${cards}</div>
       </div>`;
