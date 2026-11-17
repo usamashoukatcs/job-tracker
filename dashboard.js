@@ -12,6 +12,7 @@ let currentTagFilters = new Set();
 let currentColorFilter = null;
 let currentWorkTypeFilter = '';
 let followupJobId = null;
+let followupMode  = 'followup';
 let viewMode = 'list';
 let trackerSort = 'date-desc';
 const selectedIds = new Set();
@@ -1024,6 +1025,7 @@ function renderJobs() {
           <button class="card-btn" data-action="qa" data-job-id="${j.id}" title="Interview Q&A prep">❓ Q&A${j.interviewQA?.length ? ` (${j.interviewQA.length})` : ''}</button>
           <button class="card-btn" data-action="todos" data-job-id="${j.id}" title="Job tasks">${(()=>{ const todos=j.todos||[]; return todos.length ? `☑ ${todos.filter(t=>t.done).length}/${todos.length}` : '☑ Tasks'; })()}</button>
           ${['interview','offer'].includes(j.status) ? `<button class="card-btn" data-action="add-round" data-job-id="${j.id}" title="Log an interview round">🎙 Round</button>` : ''}
+          ${['interview', 'offer'].includes(j.status) ? `<button class="card-btn" data-action="thank-you" data-job-id="${j.id}" title="${j.thankYouSentAt ? `Thank-you sent ${fmtDate(j.thankYouSentAt)}` : 'Draft a thank-you note'}"${j.thankYouSentAt ? ' style="color:#16a34a"' : ''}>💌${j.thankYouSentAt ? ' ✓' : ''}</button>` : ''}
           ${j.applicationMethod === 'email' ? `<button class="card-btn" data-action="followup" data-job-id="${j.id}">📧 Follow-up</button>` : ''}
           <a class="card-btn" href="https://www.glassdoor.com/Search/results.htm?keyword=${encodeURIComponent(j.company)}" target="_blank" title="Glassdoor reviews" style="text-decoration:none;display:flex;align-items:center;justify-content:center">🌟</a>
           <a class="card-btn" href="https://www.linkedin.com/search/results/companies/?keywords=${encodeURIComponent(j.company)}" target="_blank" title="LinkedIn company" style="text-decoration:none;display:flex;align-items:center;justify-content:center">🔗</a>
@@ -1496,6 +1498,9 @@ function openFollowupModal(jobId) {
   const j = allJobs.find(j => j.id === jobId);
   if (!j) return;
   followupJobId = jobId;
+  followupMode  = 'followup';
+  document.getElementById('followupModalTitle').textContent = 'Draft Follow-up Email';
+  document.getElementById('followupKind').textContent = 'follow-up';
 
   document.getElementById('followupJobName').textContent = `${j.title} at ${j.company}`;
   document.getElementById('followupTo').value = j.contactEmail || '';
@@ -1504,6 +1509,35 @@ function openFollowupModal(jobId) {
   const draft = `Hi,\n\nI wanted to follow up on my application for the ${j.title} position that I submitted ${d} days ago.\n\nI'm still very interested in this role and would love the opportunity to discuss how my background could be a good fit for your team.\n\nPlease let me know if there's any additional information I can provide or if you'd like to schedule a time to connect.\n\nThank you for your time.\n\nBest regards`;
 
   document.getElementById('followupDraft').value = draft;
+  document.getElementById('followupModal').style.display = 'flex';
+}
+
+function lastInterviewRound(j) {
+  const round = (j.events || []).filter(e => e.type === 'round').pop();
+  return round ? { type: (round.note || '').split(':')[0].trim(), date: round.date } : null;
+}
+
+function buildThankYouDraft(j) {
+  const firstName = (j.recruiterName || '').trim().split(/\s+/)[0];
+  const round = lastInterviewRound(j);
+  const what  = round?.type ? `the ${round.type.toLowerCase()}` : 'our conversation';
+  return `Hi${firstName ? ' ' + firstName : ''},\n\n` +
+    `Thank you for taking the time to speak with me about the ${j.title} role at ${j.company}. I really enjoyed ${what} and learning more about the team and the work ahead.\n\n` +
+    `Our discussion made me even more excited about the opportunity, and I'm confident my experience would let me contribute from day one.\n\n` +
+    `Please don't hesitate to reach out if there's anything else I can share. I look forward to hearing about the next steps.\n\n` +
+    `Best regards`;
+}
+
+function openThankYouModal(jobId) {
+  const j = allJobs.find(j => j.id === jobId);
+  if (!j) return;
+  followupJobId = jobId;
+  followupMode  = 'thanks';
+  document.getElementById('followupModalTitle').textContent = 'Draft Thank-you Note';
+  document.getElementById('followupKind').textContent = 'thank-you note';
+  document.getElementById('followupJobName').textContent = `${j.title} at ${j.company}`;
+  document.getElementById('followupTo').value = j.contactEmail || '';
+  document.getElementById('followupDraft').value = buildThankYouDraft(j);
   document.getElementById('followupModal').style.display = 'flex';
 }
 
@@ -1521,13 +1555,18 @@ function openMailto() {
   const to      = document.getElementById('followupTo').value;
   const body    = encodeURIComponent(document.getElementById('followupDraft').value);
   const j       = allJobs.find(j => j.id === followupJobId);
-  const subject = encodeURIComponent(`Following Up — ${j?.title || 'Application'}`);
+  const subject = encodeURIComponent(followupMode === 'thanks'
+    ? `Thank you — ${j?.title || 'Interview'}`
+    : `Following Up — ${j?.title || 'Application'}`);
   window.open(`mailto:${to}?subject=${subject}&body=${body}`);
 }
 
 async function markFollowupSent() {
   if (followupJobId) {
-    await send('UPDATE_JOB', { id: followupJobId, updates: { followUpSent: true } });
+    const updates = followupMode === 'thanks'
+      ? { thankYouSentAt: new Date().toISOString() }
+      : { followUpSent: true };
+    await send('UPDATE_JOB', { id: followupJobId, updates });
     await reload();
   }
   closeFollowupModal();
@@ -1902,6 +1941,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (action === 'edit')          editJob(jobId);
     if (action === 'delete')        deleteJob(jobId);
     if (action === 'followup')      openFollowupModal(jobId);
+    if (action === 'thank-you')     openThankYouModal(jobId);
     if (action === 'add-round')     openRoundModal(jobId);
     if (action === 'duplicate')       duplicateJob(jobId);
     if (action === 'toggle-pin') {

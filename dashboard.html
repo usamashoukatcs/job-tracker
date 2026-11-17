@@ -1643,11 +1643,11 @@ body[data-theme="dark"] #themePickerLabel { color:#64748b; }
 <div class="overlay" id="followupModal" style="display:none">
   <div class="modal">
     <div class="modal-header">
-      <div class="modal-title">Draft Follow-up Email</div>
+      <div class="modal-title" id="followupModalTitle">Draft Follow-up Email</div>
       <button class="modal-close" id="closeFollowupBtn">✕</button>
     </div>
     <div class="modal-body">
-      <p style="font-size:13px;color:#64748b;margin-bottom:14px">Here's a draft follow-up for <strong id="followupJobName"></strong>. Edit it before sending.</p>
+      <p style="font-size:13px;color:#64748b;margin-bottom:14px">Here's a draft <span id="followupKind">follow-up</span> for <strong id="followupJobName"></strong>. Edit it before sending.</p>
       <label class="draft-label">To</label>
       <input id="followupTo" style="width:100%;padding:8px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:13px;margin-top:6px" placeholder="recruiter@company.com">
       <label class="draft-label">Draft Email</label>
