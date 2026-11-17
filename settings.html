@@ -328,6 +328,20 @@ body {
 
   <div class="section">
     <div class="section-header">
+      <div class="section-title">💰 Salary Floor</div>
+      <div class="section-sub">Flag jobs whose listed salary is below what you'd accept</div>
+    </div>
+    <div class="section-body">
+      <div class="form-group">
+        <label>Minimum monthly salary</label>
+        <input type="number" id="minMonthlySalary" min="0" step="100" placeholder="e.g. 2500">
+        <div class="hint">Leave empty to turn off. Yearly salaries on jobs are divided by 12 before comparing; currencies are not converted.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">
       <div class="section-title">🎯 My Skills</div>
       <div class="section-sub">Used to score how well each tracked job's description matches your profile</div>
     </div>

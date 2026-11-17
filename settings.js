@@ -13,6 +13,7 @@ async function load() {
   document.getElementById('followUpDays').value   = String(settings.followUpDays ?? 7);
   document.getElementById('ghostAfterDays').value = String(settings.ghostAfterDays ?? 30);
   document.getElementById('mySkills').value       = (settings.mySkills || []).join(', ');
+  document.getElementById('minMonthlySalary').value = settings.minMonthlySalary || '';
   updateGmailToggle(settings.gmailEnabled);
   updateClaudeStatus(!!settings.claudeApiKey);
   updateGmailStatus(settings.gmailEnabled);
@@ -129,6 +130,7 @@ function collectSettings() {
     googleClientId:   document.getElementById('googleClientId').value.trim(),
     followUpDays:     parseInt(document.getElementById('followUpDays').value),
     ghostAfterDays:   parseInt(document.getElementById('ghostAfterDays').value),
+    minMonthlySalary: parseInt(document.getElementById('minMonthlySalary').value) || 0,
     mySkills:         [...new Set(document.getElementById('mySkills').value.split(/[,\n]/).map(s => s.trim()).filter(Boolean))],
     gmailEnabled:     settings.gmailEnabled || false,
     aiWritingEnabled: settings.aiWritingEnabled !== false

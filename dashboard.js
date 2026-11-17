@@ -503,6 +503,36 @@ function renderContacts() {
   }).join('');
 }
 
+function monthlySalary(s) {
+  if (!s) return null;
+  const text = s.toLowerCase();
+  const hourly = /(\/|per |an? )\s*(hr|hour)|hourly/.test(text);
+  const nums = [...text.replace(/(\d)\.(\d{3})(?!\d)/g, '$1$2').replace(/[,\s]/g, '').matchAll(/(\d+(?:\.\d+)?)(k?)/g)]
+    .map(m => parseFloat(m[1]) * (m[2] === 'k' ? 1000 : 1))
+    .filter(n => n >= (hourly ? 1 : 100));
+  if (!nums.length) return null;
+  const top = Math.max(...nums.slice(0, 2));
+  if (hourly) return top * 160;
+  if (/(\/|per |a )\s*(mo|month)|monthly|p\.?m\b/.test(text)) return top;
+  if (/(\/|per |a )\s*(yr|year|annum)|yearly|annual|p\.?a\b/.test(text)) return top / 12;
+  return top >= 15000 ? top / 12 : top;
+}
+
+function belowSalaryFloor(j) {
+  const floor = settings.minMonthlySalary;
+  if (!floor) return null;
+  const monthly = monthlySalary(j.salary);
+  if (monthly === null || monthly >= floor) return null;
+  return Math.round(monthly);
+}
+
+function salaryMeta(j) {
+  const low = belowSalaryFloor(j);
+  return low === null
+    ? `<div class="meta-item">💰 ${j.salary}</div>`
+    : `<div class="meta-item" style="color:#dc2626;font-weight:600" title="≈ ${low.toLocaleString()}/month — below your floor of ${settings.minMonthlySalary.toLocaleString()}/month">⚠ 💰 ${j.salary}</div>`;
+}
+
 function skillMatch(jobDescription, skills) {
   if (!jobDescription || !skills || !skills.length) return null;
   const matched = [], missing = [];
@@ -1008,7 +1038,7 @@ function renderJobs() {
           <div class="card-meta">
             <div class="meta-item">📅 ${fmtDate(j.appliedDate)}</div>
             <div class="meta-item">${methodIcon}</div>
-            ${j.salary ? `<div class="meta-item">💰 ${j.salary}</div>` : ''}
+            ${j.salary ? salaryMeta(j) : ''}
             ${j.workType ? `<div class="meta-item">${j.workType === 'Remote' ? '🏠' : j.workType === 'Hybrid' ? '🔀' : '🏢'} ${j.workType}</div>` : ''}
             ${j.location ? `<div class="meta-item">📍 ${j.location}</div>` : ''}
             ${j.resumeVersion ? `<div class="meta-item" title="Resume version">📄 ${j.resumeVersion}</div>` : ''}
@@ -2878,7 +2908,7 @@ function renderJobCard(j, normUrl, appliedUrls) {
           <div class="card-meta">
             <div class="meta-item">${src}</div>
             ${j.remote ? '<div class="meta-item">🏠 Remote</div>' : ''}
-            ${j.salary ? `<div class="meta-item">💰 ${j.salary}</div>` : ''}
+            ${j.salary ? salaryMeta(j) : ''}
             ${foundLabel ? `<div class="meta-item">🗓 ${foundLabel}</div>` : ''}
             ${j.postedAt ? `<div class="meta-item">📅 Posted: ${j.postedAt}</div>` : ''}
           </div>
