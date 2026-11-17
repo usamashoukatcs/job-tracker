@@ -383,6 +383,68 @@ function setFilter(f, clickedEl) {
   renderJobs();
 }
 
+function loadSavedViews() {
+  try { return JSON.parse(localStorage.getItem('savedViews') || '[]'); } catch { return []; }
+}
+
+function storeSavedViews(views) {
+  try { localStorage.setItem('savedViews', JSON.stringify(views)); } catch {}
+}
+
+function currentViewState() {
+  return {
+    filter:   currentFilter,
+    tags:     [...currentTagFilters].sort(),
+    color:    currentColorFilter,
+    workType: currentWorkTypeFilter,
+    search:   currentSearch,
+    sort:     trackerSort
+  };
+}
+
+function sameViewState(a, b) {
+  return a.filter === b.filter && a.color === b.color && a.workType === b.workType &&
+    a.search === b.search && a.sort === b.sort && a.tags.join('|') === b.tags.join('|');
+}
+
+function renderSavedViews() {
+  const bar = document.getElementById('savedViewsBar');
+  if (!bar) return;
+  const views = loadSavedViews();
+  const now   = currentViewState();
+  bar.innerHTML = views.map((v, i) => `
+    <span class="saved-view-chip${sameViewState(v.state, now) ? ' active' : ''}" data-view-idx="${i}" title="Apply saved view">
+      ${escHtml(v.name)}<span class="sv-remove" data-remove-view="${i}" title="Delete view">✕</span>
+    </span>`).join('') +
+    `<button class="saved-view-add" id="saveViewBtn" title="Save the current filters, tags, search and sort as a view">＋ Save view</button>`;
+}
+
+function saveCurrentView() {
+  const name = (prompt('Name this view:') || '').trim();
+  if (!name) return;
+  const views = loadSavedViews().filter(v => v.name.toLowerCase() !== name.toLowerCase());
+  views.push({ name: name.slice(0, 40), state: currentViewState() });
+  storeSavedViews(views);
+  renderSavedViews();
+  showToast(`Saved view "${name}"`, 'success');
+}
+
+function applySavedView(idx) {
+  const view = loadSavedViews()[idx];
+  if (!view) return;
+  const s = view.state;
+  setFilter(s.filter, document.querySelector(`.filter-tab[data-filter="${s.filter}"]`));
+  currentTagFilters     = new Set(s.tags || []);
+  currentColorFilter    = s.color ?? null;
+  currentWorkTypeFilter = s.workType || '';
+  currentSearch         = s.search || '';
+  trackerSort           = s.sort || 'date-desc';
+  document.getElementById('workTypeFilter').value = currentWorkTypeFilter;
+  document.getElementById('searchInput').value    = currentSearch;
+  document.getElementById('trackerSort').value    = trackerSort;
+  if (viewMode === 'kanban') renderKanban(); else renderJobs();
+}
+
 function escHtml(s) {
   return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
@@ -717,6 +779,7 @@ function renderFollowUps() {
 }
 
 function renderKanban() {
+  renderSavedViews();
   const COLS = [
     { status: 'applied',   label: 'Applied',   dot: '#2563eb' },
     { status: 'interview', label: 'Interview',  dot: '#16a34a' },
@@ -842,6 +905,7 @@ function renderOfferCompare() {
 
 function renderJobs() {
   renderOfferCompare();
+  renderSavedViews();
   // Update attention badge count
   const attentionN = allJobs.filter(j => j.status !== 'archived' && needsAttention(j)).length;
   const countEl = document.getElementById('attentionCount');
@@ -2047,6 +2111,20 @@ document.addEventListener('DOMContentLoaded', () => {
   // View toggle + sort
   document.getElementById('viewList').addEventListener('click',   () => setViewMode('list'));
   document.getElementById('viewKanban').addEventListener('click', () => setViewMode('kanban'));
+  document.getElementById('savedViewsBar').addEventListener('click', e => {
+    if (e.target.closest('#saveViewBtn')) { saveCurrentView(); return; }
+    const remove = e.target.closest('[data-remove-view]');
+    if (remove) {
+      const views = loadSavedViews();
+      const [gone] = views.splice(Number(remove.dataset.removeView), 1);
+      storeSavedViews(views);
+      renderSavedViews();
+      if (gone) showToast(`Deleted view "${gone.name}"`, 'info');
+      return;
+    }
+    const chip = e.target.closest('[data-view-idx]');
+    if (chip) applySavedView(Number(chip.dataset.viewIdx));
+  });
   document.getElementById('trackerSort').addEventListener('change', e => {
     trackerSort = e.target.value;
     if (viewMode === 'kanban') renderKanban(); else renderJobs();

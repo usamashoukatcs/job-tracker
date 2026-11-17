@@ -907,6 +907,15 @@ body[data-theme="dark"] .alert-strip.alert-blue   { background:#172554;border-co
 body[data-theme="dark"] .contact-row { background:#1e293b; border-color:#334155; }
 body[data-theme="dark"] .contact-name { color:#f1f5f9; }
 body[data-theme="dark"] .contact-job { background:#334155; color:#cbd5e1; }
+.saved-view-chip { display:inline-flex; align-items:center; gap:6px; font-size:12px; padding:3px 10px; border-radius:999px; border:1px solid #cbd5e1; background:#fff; color:#334155; cursor:pointer; }
+.saved-view-chip:hover { border-color:#2563eb; }
+.saved-view-chip.active { background:#2563eb; border-color:#2563eb; color:#fff; }
+.saved-view-chip .sv-remove { opacity:.6; font-size:11px; }
+.saved-view-chip .sv-remove:hover { opacity:1; }
+.saved-view-add { font-size:12px; padding:3px 10px; border-radius:999px; border:1px dashed #94a3b8; background:transparent; color:#64748b; cursor:pointer; }
+.saved-view-add:hover { border-color:#2563eb; color:#2563eb; }
+body[data-theme="dark"] .saved-view-chip { background:#1e293b; border-color:#334155; color:#cbd5e1; }
+body[data-theme="dark"] .saved-view-chip.active { background:#2563eb; border-color:#2563eb; color:#fff; }
 body[data-theme="dark"] .stat-card {
   background: #1e293b;
   border-color: #334155;
@@ -1269,6 +1278,9 @@ body[data-theme="dark"] #themePickerLabel { color:#64748b; }
       </select>
     </div>
   </div>
+
+  <!-- Saved views -->
+  <div id="savedViewsBar" style="display:flex;align-items:center;flex-wrap:wrap;gap:6px;padding:0 24px 8px"></div>
 
   <!-- Active tag filter chips -->
   <div id="activeTagFilters" style="display:flex;flex-wrap:wrap;gap:6px;padding:0 24px 4px;min-height:0"></div>
