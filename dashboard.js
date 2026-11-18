@@ -1128,6 +1128,7 @@ function renderJobs() {
           ${j.interviewDate || j.deadline || j.followupDate ? `<button class="card-btn" data-action="calendar" data-job-id="${j.id}" title="Add interview / deadline / follow-up to calendar">🗓</button>` : ''}
           ${!snoozed && needsAttention(j) ? `<select class="card-btn" data-action="snooze" data-job-id="${j.id}" title="Hide from Needs Attention for a while" style="cursor:pointer"><option value="">💤</option><option value="3">3 days</option><option value="7">1 week</option><option value="14">2 weeks</option></select>` : ''}
           ${j.url ? `<button class="card-btn" data-action="check-posting" data-job-id="${j.id}" title="${j.postingCheckedAt ? `Posting ${j.postingState} — checked ${fmtDate(j.postingCheckedAt)}` : 'Check if the posting is still open'}">🔍</button>` : ''}
+          <button class="card-btn" data-action="brief" data-job-id="${j.id}" title="Open a printable interview brief">📄</button>
           <button class="card-btn" data-action="copy" data-job-id="${j.id}" title="Copy job details">📋</button>
           <button class="card-btn" data-action="duplicate" data-job-id="${j.id}" title="Duplicate this application">⊕</button>
           <button class="card-btn danger" data-action="delete" data-job-id="${j.id}">🗑</button>
@@ -1255,6 +1256,54 @@ function openQaModal(jobId) {
 function closeQaModal() {
   document.getElementById('qaModal').style.display = 'none';
   qaCurrentJobId = null;
+}
+
+function buildJobBrief(j) {
+  const e  = t => escHtml(t).replace(/\n/g, '<br>');
+  const row = (label, value) => value ? `<tr><th>${label}</th><td>${value}</td></tr>` : '';
+  const section = (title, body) => body ? `<h2>${title}</h2>${body}` : '';
+  const rounds = (j.events || []).filter(ev => ev.type === 'round');
+  const todos  = (j.todos || []).filter(t => !t.done);
+  const match  = skillMatch(j.jobDescription, settings.mySkills);
+  return `<!doctype html><html><head><meta charset="utf-8"><title>${escHtml(j.company)} — ${escHtml(j.title)} brief</title>
+<style>
+  body { font: 14px/1.55 -apple-system, Segoe UI, Roboto, sans-serif; color: #1e293b; max-width: 780px; margin: 32px auto; padding: 0 20px; }
+  h1 { font-size: 24px; margin: 0; } .sub { color: #64748b; margin: 4px 0 18px; }
+  h2 { font-size: 15px; text-transform: uppercase; letter-spacing: .05em; color: #2563eb; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; margin-top: 26px; }
+  table { border-collapse: collapse; width: 100%; } th { text-align: left; color: #64748b; font-weight: 600; width: 150px; padding: 3px 0; vertical-align: top; } td { padding: 3px 0; }
+  .qa { margin-bottom: 12px; } .qa b { display: block; } .chip { display: inline-block; padding: 1px 8px; margin: 2px; border-radius: 999px; font-size: 12px; }
+  .ok { background: #dcfce7; color: #166534; } .miss { background: #fee2e2; color: #991b1b; }
+  .hint { color: #94a3b8; font-size: 12px; } @media print { .hint { display: none; } body { margin: 0 auto; } }
+</style></head><body>
+<p class="hint">Press Ctrl+P (⌘P on Mac) to print or save as PDF.</p>
+<h1>${escHtml(j.title)}</h1>
+<div class="sub">${escHtml(j.company)}${j.location ? ' · ' + escHtml(j.location) : ''}${j.workType ? ' · ' + escHtml(j.workType) : ''}</div>
+<table>
+  ${row('Status', escHtml(j.status))}
+  ${row('Applied', escHtml(fmtDate(j.appliedDate)))}
+  ${row('Interview', j.interviewDate ? escHtml(fmtDate(j.interviewDate)) : '')}
+  ${row('Salary', escHtml(j.salary))}
+  ${row('Recruiter', escHtml([j.recruiterName, j.contactEmail].filter(Boolean).join(' · ')))}
+  ${row('Resume sent', escHtml(j.resumeVersion))}
+  ${row('Posting', j.url ? escHtml(j.url) : '')}
+</table>
+${section('Interview rounds', rounds.length ? `<ul>${rounds.map(r => `<li>${escHtml(fmtDate(r.date))} — ${e(r.note)}</li>`).join('')}</ul>` : '')}
+${section('Prep notes', j.prepNotes ? `<p>${e(j.prepNotes)}</p>` : '')}
+${section('Questions &amp; answers', (j.interviewQA || []).map(x => `<div class="qa"><b>${e(x.q)}</b>${x.a ? e(x.a) : '<span class="hint">No answer prepared</span>'}</div>`).join(''))}
+${section('Skills match', match ? match.matched.map(s => `<span class="chip ok">${escHtml(s)}</span>`).join('') + match.missing.map(s => `<span class="chip miss">${escHtml(s)}</span>`).join('') : '')}
+${section('Open tasks', todos.length ? `<ul>${todos.map(t => `<li>${e(t.text)}</li>`).join('')}</ul>` : '')}
+${section('Notes', j.notes ? `<p>${e(j.notes)}</p>` : '')}
+${section('Offer details', j.offerDetails ? `<p>${e(j.offerDetails)}</p>` : '')}
+${section('Job description', j.jobDescription ? `<p>${e(j.jobDescription)}</p>` : '')}
+</body></html>`;
+}
+
+function openJobBrief(id) {
+  const job = allJobs.find(j => j.id === id);
+  if (!job) return;
+  const url = URL.createObjectURL(new Blob([buildJobBrief(job)], { type: 'text/html' }));
+  window.open(url, '_blank');
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
 }
 
 function qaBank(excludeJobId) {
@@ -2092,6 +2141,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (action === 'delete')        deleteJob(jobId);
     if (action === 'followup')      openFollowupModal(jobId);
     if (action === 'thank-you')     openThankYouModal(jobId);
+    if (action === 'brief')         openJobBrief(jobId);
     if (action === 'add-round')     openRoundModal(jobId);
     if (action === 'duplicate')       duplicateJob(jobId);
     if (action === 'toggle-pin') {
