@@ -1257,6 +1257,51 @@ function closeQaModal() {
   qaCurrentJobId = null;
 }
 
+function qaBank(excludeJobId) {
+  const norm = t => (t || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  const current = new Set((allJobs.find(j => j.id === excludeJobId)?.interviewQA || []).map(x => norm(x.q)));
+  const bank = new Map();
+  for (const j of allJobs) {
+    if (j.id === excludeJobId) continue;
+    for (const item of j.interviewQA || []) {
+      const key = norm(item.q);
+      if (!key || current.has(key)) continue;
+      const prev = bank.get(key);
+      if (!prev) bank.set(key, { q: item.q, a: item.a || '', companies: [j.company] });
+      else {
+        if (!prev.companies.includes(j.company)) prev.companies.push(j.company);
+        if (!prev.a && item.a) prev.a = item.a;
+      }
+    }
+  }
+  return [...bank.values()].sort((a, b) => b.companies.length - a.companies.length || a.q.localeCompare(b.q));
+}
+
+function renderQaBank(filter = '') {
+  const el = document.getElementById('qaBankList');
+  if (!el) return;
+  const f = filter.trim().toLowerCase();
+  const items = qaBank(qaCurrentJobId).filter(x => !f || `${x.q} ${x.a}`.toLowerCase().includes(f));
+  el.innerHTML = items.length ? items.map((x, i) => `
+    <div class="qa-item" style="display:flex;gap:8px;align-items:flex-start">
+      <div style="flex:1;min-width:0">
+        <div class="qa-q-text">${escHtml(x.q)}</div>
+        <div style="font-size:11px;color:#94a3b8;margin-top:2px">${escHtml(x.companies.join(', '))}${x.a ? ' · has answer' : ''}</div>
+      </div>
+      <button class="card-btn" data-qa-reuse="${i}" data-qa-reuse-q="${escHtml(x.q)}" title="Add to this job" style="font-size:11px;padding:2px 8px;flex-shrink:0">+ Add</button>
+    </div>`).join('') : `<div style="color:#94a3b8;font-size:12px;text-align:center;padding:6px">${f ? 'No matching questions' : 'Nothing new to reuse'}</div>`;
+  el.querySelectorAll('[data-qa-reuse]').forEach(btn => {
+    btn.onclick = async () => {
+      const item = qaBank(qaCurrentJobId).find(x => x.q === btn.dataset.qaReuseQ);
+      if (!item) return;
+      const job = allJobs.find(j => j.id === qaCurrentJobId);
+      await send('UPDATE_JOB', { id: qaCurrentJobId, updates: { interviewQA: [...(job?.interviewQA || []), { q: item.q, a: item.a }] } });
+      await reload();
+      renderQaModal();
+    };
+  });
+}
+
 function renderQaModal() {
   const job = allJobs.find(j => j.id === qaCurrentJobId);
   const qa = job?.interviewQA || [];
@@ -1279,7 +1324,18 @@ function renderQaModal() {
       <textarea id="qaNewA" rows="2" placeholder="Your planned answer or key points…" maxlength="600"
         style="width:100%;padding:8px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:13px;outline:none;resize:vertical;box-sizing:border-box;margin-bottom:12px"></textarea>
       <button class="btn btn-primary" id="qaAddBtn" style="width:100%">+ Add Question</button>
-    </div>`;
+    </div>
+    ${qaBank(qaCurrentJobId).length ? `
+    <details style="border-top:1px solid #e2e8f0;margin-top:14px;padding-top:12px">
+      <summary style="cursor:pointer;font-size:13px;font-weight:600;color:#475569">📚 Reuse from other interviews (${qaBank(qaCurrentJobId).length})</summary>
+      <input id="qaBankFilter" type="text" placeholder="Filter questions…"
+        style="width:100%;padding:6px 10px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:12px;outline:none;margin:10px 0 8px;box-sizing:border-box">
+      <div id="qaBankList"></div>
+    </details>` : ''}`;
+
+  renderQaBank();
+  const bankFilter = document.getElementById('qaBankFilter');
+  if (bankFilter) bankFilter.oninput = () => renderQaBank(bankFilter.value);
 
   document.getElementById('qaAddBtn').onclick = async () => {
     const q = document.getElementById('qaNewQ').value.trim();
