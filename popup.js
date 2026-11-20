@@ -21,7 +21,54 @@ function initials(company) {
   return (company || '?').split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase();
 }
 
+function escHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function dayDiff(dateStr) {
+  const d = new Date(dateStr.slice(0, 10) + 'T00:00:00');
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  return Math.round((d - today) / 86400000);
+}
+
+function buildAgenda(jobs) {
+  const items = [];
+  const label = j => `${j.title} — ${j.company}`;
+  for (const j of jobs) {
+    if (['archived', 'rejected', 'ghosted'].includes(j.status)) continue;
+    if (j.interviewDate) {
+      const d = dayDiff(j.interviewDate);
+      if (d >= 0 && d <= 1) items.push({ d, icon: '🎙', text: `Interview: ${label(j)}` });
+    }
+    if (j.deadline) {
+      const d = dayDiff(j.deadline);
+      if (d >= 0 && d <= 2) items.push({ d, icon: '⏰', text: `Deadline: ${label(j)}` });
+    }
+    if (j.followupDate) {
+      const d = dayDiff(j.followupDate);
+      if (d >= -7 && d <= 1) items.push({ d, icon: '📌', text: `Follow up: ${label(j)}` });
+    }
+  }
+  return items.sort((a, b) => a.d - b.d);
+}
+
+function renderAgenda(jobs) {
+  const items = buildAgenda(jobs);
+  const box = document.getElementById('agenda');
+  if (!items.length) { box.style.display = 'none'; return; }
+  const when = d => d < 0 ? `${-d}d late` : d === 0 ? 'today' : d === 1 ? 'tomorrow' : `in ${d}d`;
+  document.getElementById('agendaList').innerHTML = items.slice(0, 6).map(it => `
+    <div class="agenda-item" title="${escHtml(it.text)}">
+      <span class="agenda-icon">${it.icon}</span>
+      <span class="agenda-text">${escHtml(it.text)}</span>
+      <span class="agenda-when ${it.d <= 0 ? 'now' : 'soon'}">${when(it.d)}</span>
+    </div>`).join('') +
+    (items.length > 6 ? `<div class="agenda-item" style="color:#64748b">+${items.length - 6} more in dashboard</div>` : '');
+  box.style.display = '';
+}
+
 function renderJobs(jobs) {
+  renderAgenda(jobs);
   const applied   = jobs.filter(j => j.status === 'applied').length;
   const interview = jobs.filter(j => j.status === 'interview').length;
   const offer     = jobs.filter(j => j.status === 'offer').length;
@@ -104,5 +151,6 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('addBtn2').addEventListener('click', openAddJob);
   document.getElementById('settingsBtn').addEventListener('click', openSettings);
   document.getElementById('followupLink').addEventListener('click', openDashboard);
+  document.getElementById('agendaList').addEventListener('click', openDashboard);
   load();
 });
