@@ -1173,6 +1173,7 @@ body[data-theme="dark"] #themePickerLabel { color:#64748b; }
       <button class="tb-btn" id="backupJsonBtn" title="Download a full lossless backup (JSON)">💾 Backup</button>
       <button class="tb-btn" id="restoreJsonBtn" title="Restore from a JSON backup file">📂 Restore</button>
       <input type="file" id="restoreJsonFile" accept=".json" style="display:none">
+      <button class="tb-btn" id="duplicatesBtn" style="display:none" title="Find and merge duplicate applications">🧹 Duplicates <span id="duplicatesCount"></span></button>
       <button class="tb-btn" id="weeklyRecapBtn" title="Copy a summary of the last 7 days to the clipboard">🗒 Recap</button>
       <button class="tb-btn" id="checkPostingsBtn" title="Check whether the postings of active applications are still open">🔍 Postings</button>
       <button class="tb-btn" id="calendarExportBtn" title="Download upcoming interviews, deadlines and follow-ups as a calendar file (.ics)">🗓 Calendar</button>
@@ -1688,6 +1689,22 @@ body[data-theme="dark"] #themePickerLabel { color:#64748b; }
     <div class="modal-footer">
       <button class="btn btn-ghost" id="skipReasonBtn">Skip</button>
       <button class="btn btn-primary" id="saveReasonBtn">Save Reason</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="dupesModal" style="display:none">
+  <div class="modal" style="max-width:620px">
+    <div class="modal-header">
+      <div class="modal-title">Possible Duplicates</div>
+      <button class="modal-close" id="closeDupesBtn">✕</button>
+    </div>
+    <div class="modal-body" style="max-height:65vh;overflow-y:auto">
+      <p style="font-size:12px;color:#64748b;margin:0 0 12px">Applications with the same company and title, or the same posting link. Merging keeps the one marked ★ and folds in notes, tags, Q&amp;A, tasks and history from the others.</p>
+      <div id="dupesList"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" id="closeDupesFooterBtn">Close</button>
     </div>
   </div>
 </div>

@@ -936,6 +936,7 @@ function renderOfferCompare() {
 function renderJobs() {
   renderOfferCompare();
   renderSavedViews();
+  renderDuplicatesBtn();
   // Update attention badge count
   const attentionN = allJobs.filter(j => j.status !== 'archived' && needsAttention(j)).length;
   const countEl = document.getElementById('attentionCount');
@@ -1256,6 +1257,90 @@ function openQaModal(jobId) {
 function closeQaModal() {
   document.getElementById('qaModal').style.display = 'none';
   qaCurrentJobId = null;
+}
+
+const STATUS_RANK = { offer: 6, interview: 5, applied: 4, ghosted: 3, rejected: 2, archived: 1 };
+
+function findDuplicateGroups(jobs) {
+  const normTitle = t => (t || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  const normUrl   = u => (u || '').toLowerCase().replace(/^https?:\/\/(www\.)?/, '').replace(/[?#].*$/, '').replace(/\/+$/, '');
+  const parent = new Map(jobs.map(j => [j.id, j.id]));
+  const find = id => parent.get(id) === id ? id : (parent.set(id, find(parent.get(id))), parent.get(id));
+  const union = (a, b) => parent.set(find(a), find(b));
+  const seen = new Map();
+  for (const j of jobs) {
+    const keys = [`t:${companyKey(j.company)}|${normTitle(j.title)}`];
+    if (normUrl(j.url).length > 8) keys.push(`u:${normUrl(j.url)}`);
+    for (const k of keys) {
+      if (seen.has(k)) union(j.id, seen.get(k)); else seen.set(k, j.id);
+    }
+  }
+  const groups = new Map();
+  for (const j of jobs) {
+    const root = find(j.id);
+    if (!groups.has(root)) groups.set(root, []);
+    groups.get(root).push(j);
+  }
+  const dismissed = g => g.every((a, i) => g.every((b, k) => i === k || (a.notDuplicateOf || []).includes(b.id)));
+  return [...groups.values()].filter(g => g.length > 1 && !dismissed(g)).map(g => g.sort((a, b) =>
+    (STATUS_RANK[b.status] || 0) - (STATUS_RANK[a.status] || 0) ||
+    new Date(lastActivityOf(b)) - new Date(lastActivityOf(a))));
+}
+
+function mergeJobs(primary, others) {
+  const merged = { ...primary };
+  const empty = v => v === undefined || v === null || v === '' || (Array.isArray(v) && !v.length);
+  for (const o of others) {
+    for (const [k, v] of Object.entries(o)) {
+      if (k === 'id' || empty(v)) continue;
+      if (empty(merged[k])) { merged[k] = v; continue; }
+      if (['notes', 'prepNotes'].includes(k) && typeof v === 'string' && !merged[k].includes(v)) merged[k] = `${merged[k]}\n\n${v}`;
+    }
+    merged.tags = [...new Set([...(merged.tags || []), ...(o.tags || [])])];
+    const qs = new Set((merged.interviewQA || []).map(x => x.q.toLowerCase().trim()));
+    merged.interviewQA = [...(merged.interviewQA || []), ...(o.interviewQA || []).filter(x => !qs.has(x.q.toLowerCase().trim()))];
+    const todoTexts = new Set((merged.todos || []).map(t => t.text));
+    merged.todos = [...(merged.todos || []), ...(o.todos || []).filter(t => !todoTexts.has(t.text))];
+    merged.events = [...(merged.events || []), ...(o.events || [])].sort((a, b) => new Date(a.date) - new Date(b.date));
+    if (o.appliedDate && new Date(o.appliedDate) < new Date(merged.appliedDate)) merged.appliedDate = o.appliedDate;
+  }
+  merged.status = primary.status;
+  return merged;
+}
+
+function renderDuplicatesBtn() {
+  const btn = document.getElementById('duplicatesBtn');
+  if (!btn) return;
+  const n = findDuplicateGroups(allJobs).length;
+  btn.style.display = n ? '' : 'none';
+  document.getElementById('duplicatesCount').textContent = n ? `(${n})` : '';
+}
+
+function renderDupesModal() {
+  const groups = findDuplicateGroups(allJobs);
+  const list = document.getElementById('dupesList');
+  list.innerHTML = groups.length ? groups.map((g, gi) => `
+    <div style="border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px;margin-bottom:10px">
+      ${g.map((j, i) => `
+        <div style="display:flex;align-items:center;gap:8px;font-size:13px;padding:3px 0">
+          <span style="width:14px;color:#f59e0b">${i === 0 ? '★' : ''}</span>
+          <span style="flex:1;min-width:0"><b>${escHtml(j.title)}</b> — ${escHtml(j.company)}
+            <span style="color:#94a3b8;font-size:11px">· ${escHtml(j.status)} · applied ${escHtml(fmtDate(j.appliedDate))}</span></span>
+        </div>`).join('')}
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:6px">
+        <button class="card-btn" data-dupe-ignore="${gi}" title="These are separate applications">Not duplicates</button>
+        <button class="card-btn" data-dupe-merge="${gi}" style="color:#2563eb;font-weight:600">Merge ${g.length} → 1</button>
+      </div>
+    </div>`).join('') : '<div style="text-align:center;color:#94a3b8;font-size:13px;padding:20px">No duplicates found 🎉</div>';
+}
+
+function openDupesModal() {
+  renderDupesModal();
+  document.getElementById('dupesModal').style.display = 'flex';
+}
+
+function closeDupesModal() {
+  document.getElementById('dupesModal').style.display = 'none';
 }
 
 function buildJobBrief(j) {
@@ -1821,6 +1906,35 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('ghostSilentBtn').addEventListener('click', ghostSilentJobs);
   document.getElementById('checkPostingsBtn').addEventListener('click', checkAllPostings);
   document.getElementById('weeklyRecapBtn').addEventListener('click', copyWeeklyRecap);
+  document.getElementById('duplicatesBtn').addEventListener('click', openDupesModal);
+  document.getElementById('closeDupesBtn').addEventListener('click', closeDupesModal);
+  document.getElementById('closeDupesFooterBtn').addEventListener('click', closeDupesModal);
+  document.getElementById('dupesModal').addEventListener('click', async e => {
+    if (e.target === e.currentTarget) { closeDupesModal(); return; }
+    const groups = findDuplicateGroups(allJobs);
+    const ignore = e.target.closest('[data-dupe-ignore]');
+    if (ignore) {
+      const g = groups[Number(ignore.dataset.dupeIgnore)];
+      if (!g) return;
+      const ids = g.map(j => j.id);
+      for (const j of g) await send('UPDATE_JOB', { id: j.id, updates: { notDuplicateOf: [...new Set([...(j.notDuplicateOf || []), ...ids.filter(x => x !== j.id)])] } });
+      await reload();
+      renderDupesModal();
+      return;
+    }
+    const merge = e.target.closest('[data-dupe-merge]');
+    if (merge) {
+      const g = groups[Number(merge.dataset.dupeMerge)];
+      if (!g) return;
+      const [primary, ...others] = g;
+      const { id, ...updates } = mergeJobs(primary, others);
+      await send('UPDATE_JOB', { id: primary.id, updates });
+      for (const o of others) await send('DELETE_JOB', { id: o.id });
+      await reload();
+      renderDupesModal();
+      showToast(`Merged ${g.length} applications into "${primary.title} — ${primary.company}"`, 'success');
+    }
+  });
   document.getElementById('backupJsonBtn').addEventListener('click', exportJson);
   document.getElementById('restoreJsonBtn').addEventListener('click', () => {
     document.getElementById('restoreJsonFile').value = '';
