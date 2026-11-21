@@ -1190,7 +1190,7 @@ function renderJobs() {
 // ── Job actions ──────────────────────────────────────────────────────────────
 
 async function quickStatus(id, status) {
-  await send('UPDATE_JOB', { id, updates: { status, statusUpdated: new Date().toISOString() } });
+  await send('UPDATE_JOB', { id, updates: { status, statusUpdated: new Date().toISOString(), archivedFrom: null } });
   if (status === 'offer') {
     launchConfetti();
     showToast('🎉 Congratulations on the offer!', 'success');
@@ -3380,7 +3380,8 @@ function parseSalary(s) {
 
 function renderAnalytics() {
   renderGoal();
-  const jobs = allJobs;
+  // auto-archived jobs still count under the status they were closed with
+  const jobs = allJobs.map(j => j.status === 'archived' && j.archivedFrom ? { ...j, status: j.archivedFrom } : j);
   const total = jobs.length;
   const responded   = jobs.filter(j => ['interview','offer','rejected'].includes(j.status)).length;
   const interviewed = jobs.filter(j => ['interview','offer'].includes(j.status)).length;

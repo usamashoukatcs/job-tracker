@@ -339,6 +339,28 @@ async function getAIAnswer(question, context, description) {
   }
 }
 
+async function autoArchiveClosed() {
+  const settings = await getSettings();
+  const days = settings.autoArchiveDays || 0;
+  if (!days) return 0;
+  const jobs = await getJobs();
+  const now = Date.now();
+  let count = 0;
+  for (const j of jobs) {
+    if (!['rejected', 'ghosted'].includes(j.status) || j.pinned) continue;
+    const since = j.statusUpdated || j.lastUpdated || j.appliedDate;
+    if ((now - new Date(since).getTime()) / 86400000 < days) continue;
+    j.events = j.events || [];
+    j.events.push({ date: new Date().toISOString(), type: 'archived', note: `Auto-archived after ${days} days as ${j.status}` });
+    j.archivedFrom = j.status;
+    j.status = 'archived';
+    j.statusUpdated = new Date().toISOString();
+    count++;
+  }
+  if (count) await saveJobs(jobs);
+  return count;
+}
+
 async function checkDeadlines() {
   const jobs = await getJobs();
   const now = new Date();
@@ -418,7 +440,7 @@ chrome.runtime.onStartup.addListener(async () => {
 chrome.alarms.onAlarm.addListener(async (alarm) => {
   if (alarm.name === 'gmail-sync')       await syncGmail();
   if (alarm.name === 'followup-check')   { await checkFollowUps(); await checkCustomFollowups(); }
-  if (alarm.name === 'interview-check')  { await checkInterviews(); await checkDeadlines(); }
+  if (alarm.name === 'interview-check')  { await checkInterviews(); await checkDeadlines(); await autoArchiveClosed(); }
 });
 
 chrome.notifications.onButtonClicked.addListener((notifId, btnIdx) => {
