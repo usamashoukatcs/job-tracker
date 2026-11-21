@@ -715,6 +715,66 @@ function needsAttention(j) {
   return false;
 }
 
+function parseSearch(query) {
+  const tokens = [];
+  const re = /(-)?(?:(\w+)(:|>|<))?(?:"([^"]*)"|(\S+))/g;
+  let m;
+  while ((m = re.exec(query))) {
+    const value = (m[4] ?? m[5] ?? '').toLowerCase();
+    if (!value && !m[2]) continue;
+    tokens.push({ neg: !!m[1], key: (m[2] || '').toLowerCase(), op: m[3] || '', value });
+  }
+  return tokens;
+}
+
+function searchHasStatus(query) {
+  return parseSearch(query).some(t => t.key === 'status' && !t.neg);
+}
+
+function jobMatchesToken(j, t) {
+  const has = (field, v) => (field || '').toLowerCase().includes(v);
+  const v = t.value;
+  if (!t.key) {
+    if (v.startsWith('#')) return (j.tags || []).some(tag => tag.toLowerCase() === v.slice(1));
+    return has(j.title, v) || has(j.company, v) || has(j.notes, v) || has(j.jobDescription, v) ||
+      has(j.location, v) || has(j.recruiterName, v) || (j.tags || []).some(tag => has(tag, v));
+  }
+  switch (t.key) {
+    case 'status':   return (j.status || '').startsWith(v);
+    case 'tag':      return (j.tags || []).some(tag => tag.toLowerCase() === v.replace(/^#/, ''));
+    case 'company':  return has(j.company, v);
+    case 'title':    return has(j.title, v);
+    case 'loc':
+    case 'location': return has(j.location, v);
+    case 'type':     return (j.workType || '').toLowerCase().replace(/[^a-z]/g, '').startsWith(v.replace(/[^a-z]/g, ''));
+    case 'method':
+    case 'source':   return has(j.applicationMethod, v);
+    case 'label':    return (LABEL_NAMES[LABEL_COLORS.indexOf(j.colorLabel ?? null)] || '').toLowerCase() === v;
+    case 'has': {
+      const fields = { interview: j.interviewDate, deadline: j.deadline, followup: j.followupDate, recruiter: j.recruiterName || j.recruiterLinkedin,
+        email: j.contactEmail, jd: j.jobDescription, offer: j.offerDetails, qa: (j.interviewQA || []).length, notes: j.notes,
+        salary: j.salary, url: j.url, cover: j.coverLetter, prep: j.prepNotes, tasks: (j.todos || []).length };
+      return v in fields ? !!fields[v] : false;
+    }
+    case 'salary': {
+      const monthly = monthlySalary(j.salary);
+      const n = parseFloat(v.replace(/k$/, '')) * (v.endsWith('k') ? 1000 : 1);
+      if (monthly === null || isNaN(n)) return false;
+      return t.op === '<' ? monthly < n : monthly >= n;
+    }
+    case 'older': return daysSince(j.appliedDate) >= parseInt(v, 10);
+    case 'newer': return daysSince(j.appliedDate) <= parseInt(v, 10);
+    default: {
+      const raw = `${t.key}${t.op}${v}`;
+      return has(j.title, raw) || has(j.company, raw) || has(j.notes, raw) || has(j.jobDescription, raw);
+    }
+  }
+}
+
+function jobMatchesSearch(j, query) {
+  return parseSearch(query).every(t => jobMatchesToken(j, t) !== t.neg);
+}
+
 function getFiltered() {
   let jobs = [...allJobs];
   if (currentFilter === 'all') {
@@ -727,13 +787,8 @@ function getFiltered() {
     jobs = jobs.filter(j => j.status === currentFilter);
   }
   if (currentSearch) {
-    const q = currentSearch.toLowerCase();
-    jobs = jobs.filter(j =>
-      j.title.toLowerCase().includes(q) ||
-      j.company.toLowerCase().includes(q) ||
-      (j.notes || '').toLowerCase().includes(q) ||
-      (j.jobDescription || '').toLowerCase().includes(q)
-    );
+    if (searchHasStatus(currentSearch) && currentFilter === 'all') jobs = [...allJobs];
+    jobs = jobs.filter(j => jobMatchesSearch(j, currentSearch));
   }
   if (currentTagFilters.size) {
     jobs = jobs.filter(j => [...currentTagFilters].every(t => (j.tags || []).includes(t)));
@@ -825,13 +880,7 @@ function renderKanban() {
 
   board.innerHTML = COLS.map(col => {
     let jobs = allJobs.filter(j => j.status === col.status);
-    if (search) {
-      jobs = jobs.filter(j =>
-        j.title.toLowerCase().includes(search) ||
-        j.company.toLowerCase().includes(search) ||
-        (j.notes || '').toLowerCase().includes(search)
-      );
-    }
+    if (search) jobs = jobs.filter(j => jobMatchesSearch(j, search));
 
     const cards = jobs.length === 0
       ? `<div class="kanban-empty">No jobs</div>`
