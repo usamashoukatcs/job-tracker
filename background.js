@@ -498,6 +498,20 @@ chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
         reply({ result, job });
         break;
       }
+      case 'GET_COMPANY_NOTES': {
+        const r = await chrome.storage.local.get('companyNotes');
+        reply({ notes: r.companyNotes || {} });
+        break;
+      }
+      case 'SAVE_COMPANY_NOTE': {
+        const r = await chrome.storage.local.get('companyNotes');
+        const notes = r.companyNotes || {};
+        if (msg.text) notes[msg.key] = { text: msg.text, updated: new Date().toISOString() };
+        else delete notes[msg.key];
+        await chrome.storage.local.set({ companyNotes: notes });
+        reply({ ok: true });
+        break;
+      }
       case 'REPLACE_ALL_JOBS': {
         await saveJobs(msg.jobs);
         reply({ ok: true });

@@ -231,8 +231,10 @@ function exportCsv(jobsToExport) {
   URL.revokeObjectURL(url);
 }
 
-function exportJson() {
-  const json = JSON.stringify(allJobs, null, 2);
+async function exportJson() {
+  const res = await send('GET_COMPANY_NOTES');
+  const companyNotes = res?.notes || {};
+  const json = JSON.stringify(Object.keys(companyNotes).length ? { jobs: allJobs, companyNotes } : allJobs, null, 2);
   const blob = new Blob([json], { type: 'application/json' });
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement('a');
@@ -245,8 +247,12 @@ function exportJson() {
 
 async function restoreJson(file) {
   const text = await file.text();
-  let jobs;
+  let jobs, companyNotes = null;
   try { jobs = JSON.parse(text); } catch { showToast('Invalid JSON file.', 'error'); return; }
+  if (jobs && !Array.isArray(jobs) && Array.isArray(jobs.jobs)) {
+    companyNotes = jobs.companyNotes || null;
+    jobs = jobs.jobs;
+  }
   if (!Array.isArray(jobs) || !jobs.length) { showToast('File contains no jobs.', 'error'); return; }
   const replace = confirm(
     `Found ${jobs.length} job${jobs.length !== 1 ? 's' : ''} in backup.\n\n` +
@@ -257,6 +263,12 @@ async function restoreJson(file) {
     await send('REPLACE_ALL_JOBS', { jobs });
   } else {
     for (const job of jobs) await send('ADD_JOB', { job: { ...job, id: Date.now().toString() + Math.random().toString(36).slice(2) } });
+  }
+  if (companyNotes) {
+    const existing = (await send('GET_COMPANY_NOTES'))?.notes || {};
+    for (const [key, note] of Object.entries(companyNotes)) {
+      if (replace || !existing[key]) await send('SAVE_COMPANY_NOTE', { key, text: note.text });
+    }
   }
   await reload();
   showToast(`Restored ${jobs.length} job${jobs.length !== 1 ? 's' : ''}`, 'success');
@@ -1071,7 +1083,7 @@ function renderJobs() {
           <div class="card-avatar" style="${avatarStyle(j.company)}">${initials(j.company)}</div>
           <div class="card-main">
             <div class="card-title">${j.title}</div>
-            <div class="card-company">${j.company}${sameCompany.length ? ` <span class="company-history" data-action="company-history" data-job-id="${j.id}" title="${sameCompany.map(o => `${o.title} — ${o.status} (${fmtDate(o.appliedDate)})`).join('&#10;').replace(/"/g, '&quot;')}">🏢 +${sameCompany.length} here</span>` : ''}</div>
+            <div class="card-company"><span class="company-link" data-action="company" data-job-id="${j.id}" title="Company profile &amp; notes">${j.company}</span>${sameCompany.length ? ` <span class="company-history" data-action="company-history" data-job-id="${j.id}" title="${sameCompany.map(o => `${o.title} — ${o.status} (${fmtDate(o.appliedDate)})`).join('&#10;').replace(/"/g, '&quot;')}">🏢 +${sameCompany.length} here</span>` : ''}</div>
             <div class="priority-stars" data-job-id="${j.id}">${[1,2,3].map(n => `<span class="pstar${(j.priority||0) >= n ? ' pstar-on' : ''}" data-star="${n}" title="${n === 1 ? 'Low' : n === 2 ? 'Medium' : 'High'} priority">★</span>`).join('')}</div>
             <div class="interest-hearts" data-job-id="${j.id}">${[1,2,3,4,5].map(n => `<span class="iheart${(j.interest||0) >= n ? ' iheart-on' : ''}" data-heart="${n}" title="${n === 1 ? 'Meh' : n === 2 ? 'OK' : n === 3 ? 'Like' : n === 4 ? 'Want' : 'Dream job'}">♥</span>`).join('')}</div>
             <div class="conf-emojis" data-job-id="${j.id}">${['😬','😐','🙂','😊','🚀'].map((em,i) => `<span class="cemoji${(j.confidence||0) >= i+1 ? ' cemoji-on' : ''}" data-conf="${i+1}" title="${['Low','Uncertain','Neutral','Hopeful','Very confident'][i]}">${em}</span>`).join('')}</div>
@@ -1187,6 +1199,66 @@ function renderJobs() {
 }
 
 // ── Job actions ──────────────────────────────────────────────────────────────
+
+let companyModalKey = null;
+let companyNoteTimer = null;
+
+async function openCompanyModal(jobId) {
+  const job = allJobs.find(j => j.id === jobId);
+  if (!job) return;
+  companyModalKey = companyKey(job.company);
+  const jobs = allJobs.filter(j => companyKey(j.company) === companyModalKey)
+    .sort((a, b) => new Date(b.appliedDate) - new Date(a.appliedDate));
+  const res = await send('GET_COMPANY_NOTES');
+  const note = res?.notes?.[companyModalKey];
+  const contacts = collectContacts(jobs);
+  const responded = jobs.filter(j => ['interview', 'offer'].includes(j.status) || (j.events || []).some(e => ['interview', 'offer', 'round'].includes(e.type))).length;
+  const name = job.company;
+  const enc = encodeURIComponent(name);
+
+  document.getElementById('companyModalTitle').textContent = `🏢 ${name}`;
+  document.getElementById('companyNoteSaved').textContent = note ? `Notes updated ${fmtDate(note.updated)}` : '';
+  document.getElementById('companyModalBody').innerHTML = `
+    <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:#64748b;margin-bottom:12px">
+      <span><b style="color:#1e293b">${jobs.length}</b> application${jobs.length !== 1 ? 's' : ''}</span>
+      <span><b style="color:#1e293b">${responded}</b> reached interview</span>
+      <span>first applied ${escHtml(fmtDate(jobs[jobs.length - 1].appliedDate))}</span>
+    </div>
+    <label class="form-label">Company notes <span style="font-weight:400;color:#94a3b8">(shared by every application here — culture, stack, people, salary intel)</span></label>
+    <textarea id="companyNoteInput" rows="5" placeholder="Tech stack, interview process, people you've talked to, what to avoid…"
+      style="width:100%;padding:8px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:13px;resize:vertical;box-sizing:border-box;font-family:inherit">${escHtml(note?.text || '')}</textarea>
+    <div style="font-size:13px;font-weight:600;color:#475569;margin:14px 0 6px">Applications</div>
+    ${jobs.map(j => `
+      <div style="display:flex;justify-content:space-between;gap:10px;font-size:13px;padding:5px 0;border-bottom:1px solid #f1f5f9">
+        <span>${escHtml(j.title)}${j.statusReason ? `<span style="color:#94a3b8;font-size:11px"> — ${escHtml(j.statusReason)}</span>` : ''}</span>
+        <span style="white-space:nowrap;color:#64748b;font-size:12px">${escHtml(j.status)} · ${escHtml(fmtDate(j.appliedDate))}</span>
+      </div>`).join('')}
+    ${contacts.length ? `
+      <div style="font-size:13px;font-weight:600;color:#475569;margin:14px 0 6px">People</div>
+      ${contacts.map(c => `<div style="font-size:13px;padding:3px 0">${escHtml(c.name || c.email || c.linkedin)}${c.email && c.name ? ` <span style="color:#94a3b8">· ${escHtml(c.email)}</span>` : ''}</div>`).join('')}` : ''}
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
+      <a class="card-btn" style="text-decoration:none" target="_blank" href="https://www.glassdoor.com/Search/results.htm?keyword=${enc}">🌟 Glassdoor</a>
+      <a class="card-btn" style="text-decoration:none" target="_blank" href="https://www.linkedin.com/search/results/companies/?keywords=${enc}">🔗 LinkedIn</a>
+      <a class="card-btn" style="text-decoration:none" target="_blank" href="https://www.linkedin.com/search/results/people/?keywords=${enc}%20recruiter">👥 Recruiters</a>
+      <a class="card-btn" style="text-decoration:none" target="_blank" href="https://www.google.com/search?q=${enc}%20engineering%20blog">📰 Eng blog</a>
+    </div>`;
+
+  document.getElementById('companyNoteInput').addEventListener('input', e => {
+    clearTimeout(companyNoteTimer);
+    const key = companyModalKey, text = e.target.value.trim();
+    document.getElementById('companyNoteSaved').textContent = 'Saving…';
+    companyNoteTimer = setTimeout(async () => {
+      await send('SAVE_COMPANY_NOTE', { key, text });
+      document.getElementById('companyNoteSaved').textContent = text ? 'Saved' : 'Notes cleared';
+    }, 600);
+  });
+  document.getElementById('companyModal').style.display = 'flex';
+}
+
+function closeCompanyModal() {
+  document.getElementById('companyModal').style.display = 'none';
+  companyModalKey = null;
+}
 
 function statusSnapshot(j) {
   return {
@@ -1979,6 +2051,9 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('checkPostingsBtn').addEventListener('click', checkAllPostings);
   document.getElementById('weeklyRecapBtn').addEventListener('click', copyWeeklyRecap);
   document.getElementById('duplicatesBtn').addEventListener('click', openDupesModal);
+  document.getElementById('closeCompanyBtn').addEventListener('click', closeCompanyModal);
+  document.getElementById('closeCompanyFooterBtn').addEventListener('click', closeCompanyModal);
+  document.getElementById('companyModal').addEventListener('click', e => { if (e.target === e.currentTarget) closeCompanyModal(); });
   document.getElementById('closeDupesBtn').addEventListener('click', closeDupesModal);
   document.getElementById('closeDupesFooterBtn').addEventListener('click', closeDupesModal);
   document.getElementById('dupesModal').addEventListener('click', async e => {
@@ -2330,6 +2405,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (action === 'followup')      openFollowupModal(jobId);
     if (action === 'thank-you')     openThankYouModal(jobId);
     if (action === 'brief')         openJobBrief(jobId);
+    if (action === 'company')       openCompanyModal(jobId);
     if (action === 'add-round')     openRoundModal(jobId);
     if (action === 'duplicate')       duplicateJob(jobId);
     if (action === 'toggle-pin') {
