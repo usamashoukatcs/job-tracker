@@ -943,9 +943,8 @@ function renderKanban() {
       if (!dragJobId || !targetStatus) return;
       const job = allJobs.find(j => j.id === dragJobId);
       if (!job || job.status === targetStatus) return;
-      await send('UPDATE_JOB', { id: dragJobId, updates: { status: targetStatus, statusUpdated: new Date().toISOString() } });
       dragJobId = null;
-      await reload();
+      await quickStatus(job.id, targetStatus);
     });
   });
 }
@@ -1189,13 +1188,37 @@ function renderJobs() {
 
 // ── Job actions ──────────────────────────────────────────────────────────────
 
+function statusSnapshot(j) {
+  return {
+    id: j.id,
+    updates: {
+      status: j.status,
+      statusUpdated: j.statusUpdated || null,
+      statusReason: j.statusReason || '',
+      archivedFrom: j.archivedFrom || null,
+      events: [...(j.events || [])]
+    }
+  };
+}
+
+async function restoreSnapshots(snapshots) {
+  for (const snap of snapshots) await send('UPDATE_JOB', { id: snap.id, updates: snap.updates });
+  document.getElementById('reasonModal').style.display = 'none';
+  await reload();
+  showToast(`Undone — ${snapshots.length === 1 ? 'status restored' : `${snapshots.length} jobs restored`}`, 'success');
+}
+
 async function quickStatus(id, status) {
+  const prev = allJobs.find(j => j.id === id);
+  if (!prev || prev.status === status) return;
+  const snapshot = statusSnapshot(prev);
   await send('UPDATE_JOB', { id, updates: { status, statusUpdated: new Date().toISOString(), archivedFrom: null } });
   if (status === 'offer') {
     launchConfetti();
     showToast('🎉 Congratulations on the offer!', 'success');
   }
   await reload();
+  showToast(`${prev.company}: ${prev.status} → ${status}`, 'info', { label: 'Undo', onClick: () => restoreSnapshots([snapshot]) });
   if (status === 'rejected' || status === 'ghosted') promptStatusReason(id, status);
 }
 
@@ -2171,9 +2194,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!status) return;
     e.target.value = '';
     const ids = [...selectedIds];
-    for (const id of ids) await send('UPDATE_JOB', { id, updates: { status, statusUpdated: new Date().toISOString() } });
+    const snapshots = allJobs.filter(j => ids.includes(j.id) && j.status !== status).map(statusSnapshot);
+    for (const id of ids) await send('UPDATE_JOB', { id, updates: { status, statusUpdated: new Date().toISOString(), archivedFrom: null } });
     clearSelection();
-    showToast(`Marked ${ids.length} job${ids.length !== 1 ? 's' : ''} as "${status}"`, 'info');
+    showToast(`Marked ${ids.length} job${ids.length !== 1 ? 's' : ''} as "${status}"`, 'info',
+      snapshots.length ? { label: 'Undo', onClick: () => restoreSnapshots(snapshots) } : {});
     await reload();
   });
 
