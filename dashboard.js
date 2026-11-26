@@ -2634,6 +2634,12 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('wishlistGrid').addEventListener('click', async e => {
     const delBtn   = e.target.closest('[data-wl-delete]');
     const startBtn = e.target.closest('[data-wl-start]');
+    const companyLink = e.target.closest('[data-wl-company]');
+    if (companyLink) {
+      e.preventDefault();
+      openCompanyModal(companyLink.dataset.wlCompany);
+      return;
+    }
     if (delBtn) {
       const id = delBtn.dataset.wlDelete;
       await send('DELETE_WISHLIST', { id });
@@ -3014,7 +3020,20 @@ async function renderWishlist() {
     grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="es-icon">⭐</div><div class="es-text">No targets yet</div><div class="es-sub">Add companies you want to apply to — click "+ Add Target" to get started</div></div>`;
     return;
   }
-  grid.innerHTML = items.map(item => `
+  if (!allJobs.length) allJobs = (await send('GET_JOBS'))?.jobs || [];
+  const byCompany = groupByCompany(allJobs);
+  const staleDays = 21;
+  grid.innerHTML = items.map(item => {
+    const tracked = (byCompany.get(companyKey(item.company)) || [])
+      .slice().sort((a, b) => new Date(b.appliedDate) - new Date(a.appliedDate));
+    const latest = tracked[0];
+    const age = daysSince(item.addedAt);
+    const appliedBadge = latest ? `
+          <div class="meta-item"><a href="#" data-wl-company="${latest.id}" style="color:#7c3aed;font-weight:600;text-decoration:none"
+            title="${tracked.map(j => `${escHtml(j.title)} (${j.status})`).join(' · ')}">📋 Already applied here${tracked.length > 1 ? ` ${tracked.length}×` : ''} · ${latest.status}</a></div>` : '';
+    const staleBadge = !latest && age >= staleDays
+      ? `<div class="meta-item" style="color:#d97706;font-weight:600" title="Apply or remove it to keep the list short">⏳ On the list ${age} days — still interested?</div>` : '';
+    return `
     <div class="job-card" style="position:relative">
       <div class="card-header">
         <div class="card-avatar" style="${avatarStyle(item.company)}">${initials(item.company)}</div>
@@ -3028,6 +3047,7 @@ async function renderWishlist() {
         <div class="card-meta">
           ${item.url ? `<div class="meta-item"><a href="${item.url}" target="_blank" style="color:#2563eb;text-decoration:none">🔗 View Posting</a></div>` : ''}
           <div class="meta-item" style="color:#94a3b8;font-size:11px">Added ${fmtDate(item.addedAt)}</div>
+          ${appliedBadge}${staleBadge}
         </div>
         ${item.notes ? `<div class="card-notes">${item.notes}</div>` : ''}
       </div>
@@ -3037,7 +3057,8 @@ async function renderWishlist() {
         <a class="card-btn" href="https://www.linkedin.com/search/results/companies/?keywords=${encodeURIComponent(item.company)}" target="_blank" style="text-decoration:none;display:flex;align-items:center;justify-content:center" title="LinkedIn">🔗</a>
         <a class="card-btn" href="https://www.levels.fyi/companies/${encodeURIComponent(item.company.toLowerCase().replace(/\s+/g,'-'))}/salaries/" target="_blank" style="text-decoration:none;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700" title="Levels.fyi">💲</a>
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 function openWishlistModal() {
