@@ -556,6 +556,44 @@ function skillMatch(jobDescription, skills) {
   return { matched, missing, pct: Math.round(matched.length / skills.length * 100) };
 }
 
+// Common skills to look for in saved job descriptions, on top of settings.mySkills.
+const SKILL_VOCAB = [
+  'Go', 'Golang', 'Python', 'Java', 'Kotlin', 'Rust', 'C++', 'C#', 'Ruby', 'PHP', 'Scala', 'Elixir',
+  'JavaScript', 'TypeScript', 'Node.js', 'React', 'Vue', 'Angular', 'Svelte',
+  'SQL', 'PostgreSQL', 'MySQL', 'MongoDB', 'Redis', 'Elasticsearch', 'Cassandra', 'DynamoDB', 'ClickHouse',
+  'Kafka', 'RabbitMQ', 'NATS', 'gRPC', 'GraphQL', 'REST', 'Protobuf', 'WebSockets',
+  'Docker', 'Kubernetes', 'Helm', 'Terraform', 'Ansible', 'Linux', 'Bash',
+  'AWS', 'GCP', 'Azure', 'Lambda', 'S3',
+  'CI/CD', 'GitHub Actions', 'GitLab', 'Jenkins', 'ArgoCD',
+  'Prometheus', 'Grafana', 'OpenTelemetry', 'Datadog',
+  'Microservices', 'Distributed systems', 'Event-driven', 'TDD', 'DDD', 'Agile', 'Scrum',
+  'Machine learning', 'LLM', 'Spark', 'Airflow', 'Postgres', 'K8s', 'k8s',
+];
+// Alternate spellings counted under one name.
+const SKILL_ALIASES = { golang: 'Go', postgres: 'PostgreSQL', k8s: 'Kubernetes' };
+
+// For every skill (vocab + mine) mentioned in at least one saved job
+// description: how many jobs mention it, how many of those reached interview,
+// and whether it is in my skills list.
+function skillDemand(jobs, mySkills = []) {
+  const canon = s => (SKILL_ALIASES[s.toLowerCase()] || s).toLowerCase();
+  const mine = new Set(mySkills.map(canon));
+  const vocab = [...SKILL_VOCAB, ...mySkills.filter(s => !SKILL_VOCAB.some(v => v.toLowerCase() === s.toLowerCase()))];
+  const withJd = jobs.filter(j => (j.jobDescription || '').trim());
+  const tally = {};
+  for (const j of withJd) {
+    const reached = ['interview', 'offer'].includes(j.status) || (j.events || []).some(e => e.type === 'interview');
+    const found = new Set(skillMatch(j.jobDescription, vocab).matched.map(m => SKILL_ALIASES[m.toLowerCase()] || m));
+    for (const skill of found) {
+      const t = tally[skill] || (tally[skill] = { skill, count: 0, interviewed: 0, mine: mine.has(canon(skill)) });
+      t.count++;
+      if (reached) t.interviewed++;
+    }
+  }
+  const rows = Object.values(tally).sort((a, b) => b.count - a.count || a.skill.localeCompare(b.skill));
+  return { totalJds: withJd.length, rows };
+}
+
 function buildWeeklyRecap(jobs, now = Date.now()) {
   const weekAgo = now - 7 * 86400000;
   const weekAhead = now + 7 * 86400000;
@@ -3848,6 +3886,30 @@ function renderAnalytics() {
         <div style="font-size:10px;color:#94a3b8;margin:-8px 0 10px 86px">${e.total} app${e.total !== 1 ? 's' : ''} · ${e.interviewed} interview${e.interviewed !== 1 ? 's' : ''}${e.offered ? ` · ${e.offered} offer${e.offered !== 1 ? 's' : ''}` : ''}</div>`)
       .join('')
     : '<div style="font-size:12px;color:#94a3b8">Add a resume version to your jobs to see performance data</div>';
+
+  // ── Skills in demand ─────────────────────────────────────────────────────
+  const demand = skillDemand(jobs, settings.mySkills || []);
+  const topSkills = demand.rows.slice(0, 15);
+  const gaps = demand.rows.filter(r => !r.mine).slice(0, 5);
+  const maxSkill = Math.max(...topSkills.map(r => r.count), 1);
+  document.getElementById('skillDemandChart').innerHTML = topSkills.length
+    ? `<div style="font-size:11px;color:#64748b;margin-bottom:10px">From ${demand.totalJds} saved job description${demand.totalJds !== 1 ? 's' : ''} · <span style="color:#16a34a">✓</span> = in your skills</div>` +
+      topSkills.map(r => {
+        const pct = Math.round(r.count / demand.totalJds * 100);
+        return `
+        <div class="hbar-row" title="${r.count} job${r.count !== 1 ? 's' : ''} mention ${escHtml(r.skill)} · ${r.interviewed} reached interview">
+          <div class="hbar-label" style="${r.mine ? 'color:#16a34a;font-weight:600' : ''}">${r.mine ? '✓ ' : ''}${escHtml(r.skill.length > 14 ? r.skill.slice(0, 13) + '…' : r.skill)}</div>
+          <div class="hbar-track"><div class="hbar-fill" style="width:${Math.round(r.count / maxSkill * 100)}%;background:${r.mine ? '#16a34a' : '#f59e0b'}"></div></div>
+          <div class="hbar-count">${pct}%</div>
+        </div>`;
+      }).join('') +
+      (gaps.length
+        ? `<div style="font-size:12px;margin-top:10px;padding:8px 10px;border-radius:6px;background:rgba(245,158,11,.1);color:#b45309">
+             Most requested skills you don't list: <strong>${gaps.map(g => escHtml(g.skill)).join(', ')}</strong>
+             ${(settings.mySkills || []).length ? '' : ' — add your skills in Settings to see gaps'}
+           </div>`
+        : '')
+    : '<div style="font-size:12px;color:#94a3b8">Save job descriptions on your applications to see which skills employers ask for</div>';
 
   // Why rejected / ghosted: tally statusReason across those statuses
   const rejMap = {};
