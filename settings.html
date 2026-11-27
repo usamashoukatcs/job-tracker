@@ -324,6 +324,16 @@ body {
         <div class="hint">Applied jobs with no activity for this long can be marked ghosted in one click from the dashboard.</div>
       </div>
       <div class="form-group">
+        <label>Suggest reapplying to a company after</label>
+        <select id="reapplyAfterMonths">
+          <option value="3">3 months</option>
+          <option value="6" selected>6 months</option>
+          <option value="12">12 months</option>
+          <option value="0">Never</option>
+        </select>
+        <div class="hint">Companies where every application ended in rejection or ghosting this long ago show up on the Wishlist tab.</div>
+      </div>
+      <div class="form-group">
         <label>Auto-archive rejected / ghosted jobs after</label>
         <select id="autoArchiveDays">
           <option value="0" selected>Never</option>

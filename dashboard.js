@@ -2661,6 +2661,18 @@ document.addEventListener('DOMContentLoaded', () => {
     renderWishlist();
   });
 
+  document.getElementById('reapplyList').addEventListener('click', async e => {
+    const companyLink = e.target.closest('[data-wl-company]');
+    if (companyLink) { e.preventDefault(); openCompanyModal(companyLink.dataset.wlCompany); return; }
+    const addBtn = e.target.closest('[data-reapply-add]');
+    if (!addBtn) return;
+    const j = allJobs.find(x => x.id === addBtn.dataset.reapplyAdd);
+    if (!j) return;
+    await send('ADD_WISHLIST', { item: { company: j.company, title: j.title || '', url: '', notes: `Reapplying — previously ${j.archivedFrom || j.status} for ${j.title}` } });
+    showToast(`${j.company} added to wishlist`, 'success');
+    renderWishlist();
+  });
+
   // Wishlist grid click delegation
   document.getElementById('wishlistGrid').addEventListener('click', async e => {
     const delBtn   = e.target.closest('[data-wl-delete]');
@@ -3044,14 +3056,58 @@ function scheduleNotesSave() {
 
 // ── Wishlist ─────────────────────────────────────────────────────────────────
 
+// Companies where every tracked application was rejected or ghosted at least
+// `months` ago, and that are not already on the wishlist.
+function reapplyCandidates(jobs, wishlist, months, now = Date.now()) {
+  if (!months) return [];
+  const cutoff = now - months * 30.44 * 86400000;
+  const onWishlist = new Set((wishlist || []).map(i => companyKey(i.company)));
+  const out = [];
+  for (const [key, group] of groupByCompany(jobs)) {
+    if (onWishlist.has(key)) continue;
+    let lastClosed = 0, interviewed = false;
+    const closed = group.every(j => {
+      const status = j.status === 'archived' ? j.archivedFrom : j.status;
+      if (!['rejected', 'ghosted'].includes(status)) return false;
+      const ev = (j.events || []).filter(e => e.type === status).pop();
+      lastClosed = Math.max(lastClosed, new Date(j.statusUpdated || ev?.date || j.appliedDate).getTime() || 0);
+      if ((j.events || []).some(e => ['interview', 'round'].includes(e.type))) interviewed = true;
+      return true;
+    });
+    if (!closed || !lastClosed || lastClosed > cutoff) continue;
+    const latest = group.slice().sort((a, b) => new Date(b.appliedDate) - new Date(a.appliedDate))[0];
+    out.push({ key, company: latest.company, latest, count: group.length, lastClosed, interviewed });
+  }
+  // companies where I got further are better bets
+  return out.sort((a, b) => (b.interviewed - a.interviewed) || (a.lastClosed - b.lastClosed));
+}
+
+function renderReapply(items) {
+  const months = settings.reapplyAfterMonths ?? 6;
+  const list = reapplyCandidates(allJobs, items, months);
+  const sec = document.getElementById('reapplySection');
+  if (!list.length) { sec.style.display = 'none'; return; }
+  sec.style.display = '';
+  document.getElementById('reapplyHint').textContent =
+    `Every application to these companies closed over ${months} months ago — worth another look. Change the wait in Settings.`;
+  document.getElementById('reapplyList').innerHTML = list.slice(0, 8).map(c => `
+    <div style="display:flex;align-items:center;gap:10px;font-size:13px">
+      <a href="#" data-wl-company="${c.latest.id}" style="font-weight:600;color:inherit;text-decoration:none">${escHtml(c.company)}</a>
+      <span style="color:#94a3b8;font-size:12px">${c.count > 1 ? `${c.count} applications · ` : ''}last ${escHtml(c.latest.title)} · closed ${fmtDate(new Date(c.lastClosed).toISOString())}${c.interviewed ? ' · reached interview' : ''}</span>
+      <button class="card-btn" style="margin-left:auto" data-reapply-add="${c.latest.id}">⭐ Add to wishlist</button>
+    </div>`).join('') +
+    (list.length > 8 ? `<div style="font-size:12px;color:#94a3b8">+ ${list.length - 8} more</div>` : '');
+}
+
 async function renderWishlist() {
   const { items } = await send('GET_WISHLIST', {});
   const grid = document.getElementById('wishlistGrid');
+  if (!allJobs.length) allJobs = (await send('GET_JOBS'))?.jobs || [];
+  renderReapply(items);
   if (!items || !items.length) {
     grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="es-icon">⭐</div><div class="es-text">No targets yet</div><div class="es-sub">Add companies you want to apply to — click "+ Add Target" to get started</div></div>`;
     return;
   }
-  if (!allJobs.length) allJobs = (await send('GET_JOBS'))?.jobs || [];
   const byCompany = groupByCompany(allJobs);
   const staleDays = 21;
   grid.innerHTML = items.map(item => {
