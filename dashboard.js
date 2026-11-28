@@ -594,6 +594,33 @@ function skillDemand(jobs, mySkills = []) {
   return { totalJds: withJd.length, rows };
 }
 
+// Conversion rates from applications old enough to have had a reply, and what
+// the current weekly pace should produce over the next four weeks.
+function pipelineForecast(jobs, now = Date.now(), settleDays = 14) {
+  const day = 86400000;
+  const status = j => j.status === 'archived' && j.archivedFrom ? j.archivedFrom : j.status;
+  const reachedInterview = j => ['interview', 'offer'].includes(status(j)) || !!j.interviewDate ||
+    (j.events || []).some(e => ['interview', 'round', 'offer'].includes(e.type));
+  const reachedOffer = j => status(j) === 'offer' || (j.events || []).some(e => e.type === 'offer');
+
+  const dated = jobs.filter(j => j.appliedDate && !isNaN(new Date(j.appliedDate)));
+  const settled = dated.filter(j => now - new Date(j.appliedDate).getTime() >= settleDays * day);
+  const interviews = settled.filter(reachedInterview).length;
+  const offers = settled.filter(reachedOffer).length;
+  const recent = dated.filter(j => now - new Date(j.appliedDate).getTime() < 28 * day).length;
+  const perWeek = recent / 4;
+  const interviewRate = settled.length ? interviews / settled.length : 0;
+  const offerRate = settled.length ? offers / settled.length : 0;
+  return {
+    settled: settled.length, interviews, offers, perWeek,
+    interviewRate, offerRate,
+    appsPerInterview: interviews ? settled.length / interviews : null,
+    appsPerOffer: offers ? settled.length / offers : null,
+    next4wInterviews: perWeek * 4 * interviewRate,
+    next4wOffers: perWeek * 4 * offerRate,
+  };
+}
+
 function buildWeeklyRecap(jobs, now = Date.now()) {
   const weekAgo = now - 7 * 86400000;
   const weekAhead = now + 7 * 86400000;
@@ -4057,6 +4084,26 @@ function renderAnalytics() {
         <div style="font-size:10px;color:#94a3b8;margin:-8px 0 10px 86px">${e.total} app${e.total !== 1 ? 's' : ''} · ${e.interviewed} interview${e.interviewed !== 1 ? 's' : ''}${e.offered ? ` · ${e.offered} offer${e.offered !== 1 ? 's' : ''}` : ''}</div>`)
       .join('')
     : '<div style="font-size:12px;color:#94a3b8">Add a resume version to your jobs to see performance data</div>';
+
+  // ── Pipeline forecast ───────────────────────────────────────────────────
+  const fc = pipelineForecast(allJobs);
+  const pct = r => `${Math.round(r * 1000) / 10}%`;
+  const fcStat = (num, label) => `<div style="flex:1;min-width:110px"><div style="font-size:20px;font-weight:700">${num}</div><div style="font-size:11px;color:#64748b">${label}</div></div>`;
+  document.getElementById('forecastCard').innerHTML = fc.settled < 5
+    ? '<div style="font-size:12px;color:#94a3b8">Needs at least 5 applications older than 2 weeks to forecast</div>'
+    : `<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:10px">
+        ${fcStat(fc.appsPerInterview ? `1 in ${Math.round(fc.appsPerInterview)}` : '—', `applications reach interview (${pct(fc.interviewRate)})`)}
+        ${fcStat(fc.appsPerOffer ? `1 in ${Math.round(fc.appsPerOffer)}` : '—', `applications reach offer (${pct(fc.offerRate)})`)}
+        ${fcStat(fc.perWeek.toFixed(1), 'applications / week (last 4 weeks)')}
+      </div>
+      <div style="font-size:12px;color:#475569;line-height:1.6">
+        At this pace, expect about <strong>${fc.next4wInterviews.toFixed(1)} interview${fc.next4wInterviews.toFixed(1) === '1.0' ? '' : 's'}</strong>
+        ${fc.offerRate ? ` and <strong>${fc.next4wOffers.toFixed(1)} offer${fc.next4wOffers.toFixed(1) === '1.0' ? '' : 's'}</strong>` : ''} from the next 4 weeks of applications.
+        ${fc.appsPerInterview && fc.perWeek < fc.appsPerInterview
+          ? ` Sending <strong>${Math.ceil(fc.appsPerInterview)}</strong> a week would make it roughly one interview a week.`
+          : ''}
+        <div style="font-size:11px;color:#94a3b8;margin-top:4px">Based on ${fc.settled} applications sent at least 2 weeks ago.</div>
+      </div>`;
 
   // ── Skills in demand ─────────────────────────────────────────────────────
   const demand = skillDemand(jobs, settings.mySkills || []);
