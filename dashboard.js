@@ -890,6 +890,61 @@ function renderStats() {
   if (todayEl) todayEl.textContent = todayCount;
 }
 
+// Days from today to an interview date ("YYYY-MM-DD"), by local calendar day.
+function daysUntilDate(dateStr, now = new Date()) {
+  const [y, m, d] = (dateStr || '').slice(0, 10).split('-').map(Number);
+  if (!y || !m || !d) return null;
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  return Math.round((new Date(y, m - 1, d) - today) / 86400000);
+}
+
+// Interviews in the next two days, with what is still missing to prepare.
+function upcomingInterviews(jobs, companyNotes = {}, now = new Date()) {
+  return jobs
+    .filter(j => !['rejected', 'ghosted', 'archived'].includes(j.status))
+    .map(j => ({ j, days: daysUntilDate(j.interviewDate, now) }))
+    .filter(x => x.days !== null && x.days >= 0 && x.days <= 2)
+    .sort((a, b) => a.days - b.days)
+    .map(({ j, days }) => ({
+      j, days,
+      checks: [
+        ['prep notes', !!(j.prepNotes || '').trim()],
+        ['Q&A', (j.interviewQA || []).length > 0],
+        ['job description', !!(j.jobDescription || '').trim()],
+        ['company notes', !!(companyNotes[companyKey(j.company)] || '').toString().trim()],
+      ],
+    }));
+}
+
+async function renderInterviewSoon() {
+  const sec = document.getElementById('interviewSoonSection');
+  if (!sec) return;
+  const res = await send('GET_COMPANY_NOTES');
+  const notes = {};
+  for (const [k, v] of Object.entries(res?.notes || {})) notes[k] = typeof v === 'string' ? v : (v?.text || '');
+  const list = upcomingInterviews(allJobs, notes);
+  if (!list.length) { sec.style.display = 'none'; return; }
+  sec.style.display = '';
+  sec.innerHTML = `<div class="is-head">🎙 Interview${list.length > 1 ? 's' : ''} coming up</div>` + list.map(({ j, days, checks }) => {
+    const when = days === 0 ? 'Today' : days === 1 ? 'Tomorrow' : 'In 2 days';
+    const missing = checks.filter(c => !c[1]);
+    return `
+    <div class="is-row">
+      <span class="is-when">${when}</span>
+      <span><strong>${escHtml(j.title)}</strong> · ${escHtml(j.company)}${j.recruiterName ? ` · with ${escHtml(j.recruiterName)}` : ''}</span>
+      <span class="is-ready">${missing.length
+        ? `Still to prepare: ${missing.map(c => `<span class="miss">${c[0]}</span>`).join(', ')}`
+        : '✓ All prep in place'}</span>
+      <span class="is-actions">
+        <button class="card-btn" data-soon="brief" data-job-id="${j.id}" title="Printable brief">📄 Brief</button>
+        <button class="card-btn" data-soon="qa" data-job-id="${j.id}" title="Interview Q&A">❓ Q&A</button>
+        <button class="card-btn" data-soon="company" data-job-id="${j.id}" title="Company profile and notes">🏢</button>
+        <button class="card-btn" data-soon="edit" data-job-id="${j.id}" title="Edit prep notes">✏️</button>
+      </span>
+    </div>`;
+  }).join('');
+}
+
 function renderFollowUps() {
   const days    = settings.followUpDays || 7;
   const overdue = allJobs.filter(j =>
@@ -2079,6 +2134,7 @@ async function reload() {
   settings = settingsRes?.settings || {};
   renderStats();
   renderFollowUps();
+  renderInterviewSoon();
   if (viewMode === 'kanban') renderKanban(); else renderJobs();
 }
 
@@ -2671,6 +2727,13 @@ document.addEventListener('DOMContentLoaded', () => {
     await send('ADD_WISHLIST', { item: { company: j.company, title: j.title || '', url: '', notes: `Reapplying — previously ${j.archivedFrom || j.status} for ${j.title}` } });
     showToast(`${j.company} added to wishlist`, 'success');
     renderWishlist();
+  });
+
+  document.getElementById('interviewSoonSection').addEventListener('click', e => {
+    const btn = e.target.closest('[data-soon]');
+    if (!btn) return;
+    const id = btn.dataset.jobId;
+    ({ brief: openJobBrief, qa: openQaModal, company: openCompanyModal, edit: editJob })[btn.dataset.soon]?.(id);
   });
 
   // Wishlist grid click delegation

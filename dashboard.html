@@ -385,6 +385,17 @@ body[data-theme="dark"] .company-history { color: #c4b5fd; background: #2e1065; 
 .followup-section .text { flex: 1; }
 .followup-section .text strong { display: block; font-size: 13px; color: #92400e; }
 .followup-section .text small { font-size: 12px; color: #b45309; }
+.interview-soon { background:#f0fdf4; border:1.5px solid #bbf7d0; border-radius:10px; padding:14px 16px; }
+.interview-soon .is-head { font-size:13px; font-weight:700; color:#15803d; margin-bottom:8px; }
+.interview-soon .is-row { display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding:8px 0; border-top:1px solid #dcfce7; font-size:13px; }
+.interview-soon .is-row:first-of-type { border-top:none; }
+.interview-soon .is-when { font-weight:700; color:#15803d; min-width:78px; }
+.interview-soon .is-ready { font-size:11px; color:#64748b; }
+.interview-soon .is-ready .miss { color:#d97706; font-weight:600; }
+.interview-soon .is-actions { margin-left:auto; display:flex; gap:6px; }
+body[data-theme="dark"] .interview-soon { background:#052e16; border-color:#166534; }
+body[data-theme="dark"] .interview-soon .is-head, body[data-theme="dark"] .interview-soon .is-when { color:#4ade80; }
+body[data-theme="dark"] .interview-soon .is-row { border-color:#14532d; }
 .followup-jobs { margin-top: 10px; }
 .followup-job-item {
   display: flex;
@@ -1235,6 +1246,9 @@ body[data-theme="dark"] #themePickerLabel { color:#64748b; }
       <div class="stat-label">Archived</div>
     </div>
   </div>
+
+  <!-- Interview day banner (interviews today / in the next 2 days) -->
+  <div id="interviewSoonSection" style="display:none;margin:20px 28px 0" class="interview-soon"></div>
 
   <!-- Follow-up section (only shown when there are overdue) -->
   <div id="followupSection" style="display:none; margin-top:20px;">
